@@ -113,7 +113,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 required = uint256(2**256 - 1) / diff;
         require(uint256(hash0) <= required, "diff not match");
 
-        // Send reward to coinbase and miner
+        // Mining is successful.
+        // Send reward to coinbase and miner.
         {
             // avoid stack too deep error
             uint256 totalReward = 0;
@@ -136,7 +137,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             payable(miner).transfer(minerReward);
         }
 
-        //  Mining is successful.  Update info.
+        // Update info.
         for (uint256 i = 0; i < shardLen; i++) {
             MiningLib.update(infos[startShardId + i], block.timestamp, diffs[i], hash0);
         }
