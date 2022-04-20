@@ -5,8 +5,9 @@ import "./IStorageManager.sol";
 
 contract DecentralizedKV {
     uint256 public immutable storageCost;  // Upfront storage cost (pre-dcf)
-    // 0.85 yearly discount in second = 0.9999999948465585 in Q128.128
-    uint256 public dcfFactor = 340282365167313208607671216367074279424;
+    // Discounted cash flow factor in seconds
+    // E.g., 0.85 yearly discount in second = 0.9999999948465585 = 340282365167313208607671216367074279424 in Q128.128
+    uint256 public immutable dcfFactor;
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
     uint40 public lastKvIdx = 0;  // number of entries in the store
@@ -22,11 +23,12 @@ contract DecentralizedKV {
     mapping (bytes32 => PhyAddr) internal kvMap;
     mapping (uint256 => bytes32) internal idxMap;
 
-    constructor(IStorageManager _storageManager, uint256 _maxKvSize, uint256 _startTime, uint256 _storageCost) {
+    constructor(IStorageManager _storageManager, uint256 _maxKvSize, uint256 _startTime, uint256 _storageCost, uint256 _dcfFactor) {
         storageManager = _storageManager;
         startTime = _startTime;
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
+        dcfFactor = _dcfFactor;
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {

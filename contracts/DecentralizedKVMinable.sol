@@ -24,13 +24,15 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 _shardSizeBits,
         uint256 _startTime,
         uint256 _storageCost,
+        uint256 _dcfFactor,
         uint256 _minimumDiff,
         uint256 _randomChecks,
         uint256 _targetIntervalSec,
         uint256 _cutoff,
         uint256 _diffAdjDivisor,
         uint256 _coinbaseShare
-    ) DecentralizedKV(_systemContract, 1 << _maxKvSizeBits, _startTime, _storageCost) {
+    ) DecentralizedKV(_systemContract, 1 << _maxKvSizeBits, _startTime, _storageCost, _dcfFactor) {
+        systemContract = _systemContract;
         shardSizeBits = _shardSizeBits;
         maxKvSizeBits = _maxKvSizeBits;
         shardEntryBits = _shardSizeBits - _maxKvSizeBits;
@@ -40,7 +42,6 @@ contract DecentralizedKVMinable is DecentralizedKV {
         cutoff = _cutoff;
         diffAdjDivisor = _diffAdjDivisor;
         coinbaseShare = _coinbaseShare;
-        systemContract = _systemContract;
     }
 
     // We allow cross mine multiple shards by aggregate their difficulties.
