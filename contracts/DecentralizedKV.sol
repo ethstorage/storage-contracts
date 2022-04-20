@@ -63,12 +63,12 @@ contract DecentralizedKV {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
 
-        if (paddr.kvIdx == 0) {
+        if (paddr.hash == 0) {
             // append (require payment from sender)
             require(msg.value >= cost(), "not enough storage cost");
-            lastKvIdx = lastKvIdx + 1;
             paddr.kvIdx = lastKvIdx;
             paddr.kvSize = uint24(data.length);
+            lastKvIdx = lastKvIdx + 1;
         }
         paddr.hash = bytes24(keccak256(data));
         kvMap[skey] = paddr;
@@ -108,7 +108,7 @@ contract DecentralizedKV {
         PhyAddr memory paddr = kvMap[skey];
         uint40 kvIdx = paddr.kvIdx;
 
-        require(kvIdx != 0, "kv not exist");
+        require(paddr.hash != 0, "kv not exist");
 
         // clear kv data
         kvMap[skey] = PhyAddr({kvIdx: 0, kvSize: 0, hash: 0});
