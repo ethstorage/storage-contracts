@@ -5,6 +5,18 @@ import "./DecentralizedKV.sol";
 import "./MiningLib.sol";
 
 contract DecentralizedKVMinable is DecentralizedKV {
+    struct Config {
+        uint256 maxKvSizeBits;
+        uint256 shardSizeBits;
+        uint256 shardEntryBits;
+        uint256 randomChecks;
+        uint256 minimumDiff;
+        uint256 targetIntervalSec;
+        uint256 cutoff;
+        uint256 diffAdjDivisor;
+        uint256 coinbaseShare; // 10000 = 1.0
+        ISystemContract systemContract;
+    }
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
     uint256 public immutable shardEntryBits;
@@ -19,29 +31,21 @@ contract DecentralizedKVMinable is DecentralizedKV {
     mapping (uint256 => MiningLib.MiningInfo) public infos;
 
     constructor(
-        ISystemContract _systemContract,
-        uint256 _maxKvSizeBits,
-        uint256 _shardSizeBits,
+        Config memory _config,
         uint256 _startTime,
         uint256 _storageCost,
-        uint256 _dcfFactor,
-        uint256 _minimumDiff,
-        uint256 _randomChecks,
-        uint256 _targetIntervalSec,
-        uint256 _cutoff,
-        uint256 _diffAdjDivisor,
-        uint256 _coinbaseShare
-    ) DecentralizedKV(_systemContract, 1 << _maxKvSizeBits, _startTime, _storageCost, _dcfFactor) {
-        systemContract = _systemContract;
-        shardSizeBits = _shardSizeBits;
-        maxKvSizeBits = _maxKvSizeBits;
-        shardEntryBits = _shardSizeBits - _maxKvSizeBits;
-        randomChecks = _randomChecks;
-        minimumDiff = _minimumDiff;
-        targetIntervalSec = _targetIntervalSec;
-        cutoff = _cutoff;
-        diffAdjDivisor = _diffAdjDivisor;
-        coinbaseShare = _coinbaseShare;
+        uint256 _dcfFactor
+    ) DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor) {
+        systemContract = _config.systemContract;
+        shardSizeBits = _config.shardSizeBits;
+        maxKvSizeBits = _config.maxKvSizeBits;
+        shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
+        randomChecks = _config.randomChecks;
+        minimumDiff = _config.minimumDiff;
+        targetIntervalSec = _config.targetIntervalSec;
+        cutoff = _config.cutoff;
+        diffAdjDivisor = _config.diffAdjDivisor;
+        coinbaseShare = _config.coinbaseShare;
     }
 
     // We allow cross mine multiple shards by aggregate their difficulties.
