@@ -9,7 +9,7 @@ library MiningLib {
         uint256 blockMined;
     }
 
-    function mine(MiningInfo storage info, uint256 mineTime, uint256 targetIntervalSec, uint256 cutoff, uint256 diffAdjDivisor, uint256 minDiff, bytes32 miningHash) internal {
+    function expectedDiff(MiningInfo storage info, uint256 mineTime, uint256 targetIntervalSec, uint256 cutoff, uint256 diffAdjDivisor, uint256 minDiff) internal view returns (uint256) {
         // Check if the diff matches
         // Use modified ETH diff algorithm
         uint256 interval = mineTime - info.lastMineTime;
@@ -24,10 +24,10 @@ library MiningLib {
                 diff = diff - dec;
             }
         }
+        return diff;
+    }
 
-        uint256 required = uint256(2**256 - 1) / diff;
-        require(uint256(miningHash) <= required, "diff not match");
-
+    function update(MiningInfo storage info, uint256 mineTime, uint256 diff, bytes32 miningHash) internal {
         // A block is mined!
         info.blockMined = info.blockMined + 1;
         info.miningHash = miningHash;

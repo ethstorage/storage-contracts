@@ -43,18 +43,18 @@ contract DecentralizedKV {
     }
 
     // Evaluate payment from [t0, t1) seconds
-    function payment(uint256 x, uint256 fp, uint256 t0, uint256 t1) internal pure returns (uint256) {
-        return (x * (pow(fp, t0) - pow(fp, t1))) >> 128;
+    function payment(uint256 x, uint256 t0, uint256 t1) internal view returns (uint256) {
+        return (x * (pow(dcfFactor, t0) - pow(dcfFactor, t1))) >> 128;
     }
 
     // Evaluate payment from [t0, \inf).
-    function paymentInf(uint256 x, uint256 fp, uint256 t0) internal pure returns (uint256) {
-        return (x * pow(fp, t0)) >> 128;
+    function paymentInf(uint256 x, uint256 t0) internal view returns (uint256) {
+        return (x * pow(dcfFactor, t0)) >> 128;
     }
 
     // Evaluate the storage cost of a single put().
     function cost() internal view returns (uint256) {
-        return paymentInf(storageCost, dcfFactor, block.timestamp - startTime);
+        return paymentInf(storageCost, block.timestamp - startTime);
     }
 
     // Write a large value to KV store.  If the KV pair exists, overrides it.  Otherwise, will append the KV to the KV array.

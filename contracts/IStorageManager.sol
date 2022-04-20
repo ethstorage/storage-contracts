@@ -7,5 +7,13 @@ interface IStorageManager {
 
     // Set a raw data to underlying storage.
     function putRaw(uint256 kvIdx, bytes memory data) external;
+}
+
+interface IMiningHash {
+    // A CPU-intensive hash algorithm used to generate random KV indices.
+    function hash0(bytes32) external returns (bytes32);
+}
+
+interface ISystemContract is IStorageManager, IMiningHash {
     
 }
