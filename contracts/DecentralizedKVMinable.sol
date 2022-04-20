@@ -98,8 +98,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
             if (i + startShardId < lastShardIdx) {
                 // The shard is full.
                 totalReward = totalReward + payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
-            } else {
-                // TODO: check
+            } else if (i + startShardId == lastShardIdx) {
+                // The shard is not full.
                 uint256 entries = lastKvIdx % (1 << shardEntryBits);
                 totalReward = totalReward + payment(entries, info.lastMineTime, block.timestamp);
             }
