@@ -59,7 +59,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         // Aggregate the difficulties from multiple shards.
         uint256[] memory diffs = new uint256[](shardLen);
         uint256 diff = 0;
-        bytes32 hash0 = bytes32(startShardId);
+        bytes32 hash0 = bytes32(0);
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
             MiningLib.MiningInfo storage info = infos[shardId];
@@ -73,7 +73,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             );
             diff = diff + diffs[i];
 
-            hash0 = keccak256(abi.encode(hash0, infos[shardId].miningHash));
+            hash0 = keccak256(abi.encode(hash0, shardId, infos[shardId].miningHash));
         }
 
         hash0 = systemContract.hash0(keccak256(abi.encode(hash0, nonce, miner)));
@@ -117,17 +117,15 @@ contract DecentralizedKVMinable is DecentralizedKV {
                 MiningLib.MiningInfo storage info = infos[shardId];
                 if (i + startShardId < lastShardIdx) {
                     // The shard is full.
-                    totalReward =
-                        totalReward +
-                        payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
+                    totalReward += payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
                 } else if (i + startShardId == lastShardIdx) {
                     // The shard is not full.
                     uint256 entries = lastKvIdx % (1 << shardEntryBits);
-                    totalReward = totalReward + payment(entries, info.lastMineTime, block.timestamp);
+                    totalReward += payment(storageCost * entries, info.lastMineTime, block.timestamp);
                 }
             }
             uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
-            uint256 minerReward = totalReward - coinbaseShare;
+            uint256 minerReward = totalReward - coinbaseReward;
             payable(block.coinbase).transfer(coinbaseReward);
             payable(miner).transfer(minerReward);
         }
