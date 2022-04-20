@@ -28,7 +28,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
     uint256 public immutable coinbaseShare; // 10000 = 1.0
     ISystemContract public immutable systemContract;
 
-    mapping (uint256 => MiningLib.MiningInfo) public infos;
+    mapping(uint256 => MiningLib.MiningInfo) public infos;
 
     constructor(
         Config memory _config,
@@ -49,7 +49,13 @@ contract DecentralizedKVMinable is DecentralizedKV {
     }
 
     // We allow cross mine multiple shards by aggregate their difficulties.
-    function mine(uint256 startShardId, uint256 shardLen, uint256 nonce, address miner, bytes[] memory data) public {
+    function mine(
+        uint256 startShardId,
+        uint256 shardLen,
+        uint256 nonce,
+        address miner,
+        bytes[] memory data
+    ) public {
         // Aggregate the difficulties from multiple shards.
         uint256[] memory diffs = new uint256[](shardLen);
         uint256 diff = 0;
@@ -57,36 +63,44 @@ contract DecentralizedKVMinable is DecentralizedKV {
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
             MiningLib.MiningInfo storage info = infos[shardId];
-            diffs[i] = MiningLib.expectedDiff(info, block.timestamp, targetIntervalSec, cutoff, diffAdjDivisor, minimumDiff); 
+            diffs[i] = MiningLib.expectedDiff(
+                info,
+                block.timestamp,
+                targetIntervalSec,
+                cutoff,
+                diffAdjDivisor,
+                minimumDiff
+            );
             diff = diff + diffs[i];
 
             hash0 = keccak256(abi.encode(hash0, infos[shardId].miningHash));
         }
 
         hash0 = systemContract.hash0(keccak256(abi.encode(hash0, nonce, miner)));
-        { // avoid stack too deep error
-        uint256 matched = 0;
-        uint256 totalEntryBits = shardLen * shardEntryBits;
-        uint256 totalEntries = 1 << totalEntryBits;
-        uint256 startKvIdx = startShardId << shardEntryBits;
-        for (uint256 i = 0; i < data.length; i++) {
-            uint256 kvIdx = (uint256(hash0) % totalEntries) + startKvIdx;
-            bytes32 dataHash;
-            if (kvIdx >= lastKvIdx) {
-                dataHash = systemContract.maskedUndataHash(kvIdx);
-            } else {
-                bytes32 skey = idxMap[kvIdx];
-                dataHash = systemContract.maskedDataHash(skey, data[i]);
+        {
+            // avoid stack too deep error
+            uint256 matched = 0;
+            uint256 totalEntryBits = shardLen * shardEntryBits;
+            uint256 totalEntries = 1 << totalEntryBits;
+            uint256 startKvIdx = startShardId << shardEntryBits;
+            for (uint256 i = 0; i < data.length; i++) {
+                uint256 kvIdx = (uint256(hash0) % totalEntries) + startKvIdx;
+                bytes32 dataHash;
+                if (kvIdx >= lastKvIdx) {
+                    dataHash = systemContract.maskedUndataHash(kvIdx);
+                } else {
+                    bytes32 skey = idxMap[kvIdx];
+                    dataHash = systemContract.maskedDataHash(skey, data[i]);
 
-                if (kvMap[skey].hash == bytes24(keccak256(data[i]))) {
-                    matched = matched + 1;
+                    if (kvMap[skey].hash == bytes24(keccak256(data[i]))) {
+                        matched = matched + 1;
+                    }
                 }
-            }
 
-            hash0 = keccak256(abi.encode(hash0, dataHash));
-        }
-        // We allow some mismatches if the data happens to be removed/modified.
-        require(matched >= randomChecks, "insufficient PoRA");
+                hash0 = keccak256(abi.encode(hash0, dataHash));
+            }
+            // We allow some mismatches if the data happens to be removed/modified.
+            require(matched >= randomChecks, "insufficient PoRA");
         }
 
         // Check if the data matches the hash in metadata.
@@ -94,25 +108,28 @@ contract DecentralizedKVMinable is DecentralizedKV {
         require(uint256(hash0) <= required, "diff not match");
 
         // Send reward to coinbase and miner
-        { // avoid stack too deep error
-        uint256 totalReward = 0;
-        uint256 lastShardIdx = lastKvIdx >> shardEntryBits;
-        for (uint256 i = 0; i < shardLen; i++) {
-            uint256 shardId = startShardId + i;
-            MiningLib.MiningInfo storage info = infos[shardId];
-            if (i + startShardId < lastShardIdx) {
-                // The shard is full.
-                totalReward = totalReward + payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
-            } else if (i + startShardId == lastShardIdx) {
-                // The shard is not full.
-                uint256 entries = lastKvIdx % (1 << shardEntryBits);
-                totalReward = totalReward + payment(entries, info.lastMineTime, block.timestamp);
+        {
+            // avoid stack too deep error
+            uint256 totalReward = 0;
+            uint256 lastShardIdx = lastKvIdx >> shardEntryBits;
+            for (uint256 i = 0; i < shardLen; i++) {
+                uint256 shardId = startShardId + i;
+                MiningLib.MiningInfo storage info = infos[shardId];
+                if (i + startShardId < lastShardIdx) {
+                    // The shard is full.
+                    totalReward =
+                        totalReward +
+                        payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
+                } else if (i + startShardId == lastShardIdx) {
+                    // The shard is not full.
+                    uint256 entries = lastKvIdx % (1 << shardEntryBits);
+                    totalReward = totalReward + payment(entries, info.lastMineTime, block.timestamp);
+                }
             }
-        }
-        uint256 coinbaseReward = totalReward * coinbaseShare / 10000;
-        uint256 minerReward = totalReward - coinbaseShare;
-        payable(block.coinbase).transfer(coinbaseReward);
-        payable(miner).transfer(minerReward);
+            uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
+            uint256 minerReward = totalReward - coinbaseShare;
+            payable(block.coinbase).transfer(coinbaseReward);
+            payable(miner).transfer(minerReward);
         }
 
         //  Mining is successful.  Update info.
