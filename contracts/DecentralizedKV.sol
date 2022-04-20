@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./IStorageManager.sol";
+
 contract DecentralizedKV {
-    uint256 public constant KV_SIZE = 256 * 1024;
-    uint256 public constant DIFF_ADJ_MULTIPLIER = 1024;
-    uint256 public constant TARGET_INTERVAL_SEC = 600;
-    uint256 public storageCost = 1e16;
+    uint256 public immutable storageCost;  // Upfront storage cost (pre-dcf)
     // 0.85 yearly discount in second = 0.9999999948465585 in Q128.128
     uint256 public dcfFactor = 340282365167313208607671216367074279424;
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
     uint40 public lastKvIdx = 0;
+
+    IStorageManager public immutable storageManager;
 
     struct PhyAddr {
         uint40 kvIdx;
@@ -21,9 +22,11 @@ contract DecentralizedKV {
     mapping (bytes32 => PhyAddr) internal kvMap;
     mapping (uint256 => bytes32) internal idxMap;
 
-    constructor(uint256 _startTime, uint256 _maxKvSize) {
+    constructor(IStorageManager _storageManager, uint256 _maxKvSize, uint256 _startTime, uint256 _storageCost) {
+        storageManager = _storageManager;
         startTime = _startTime;
         maxKvSize = _maxKvSize;
+        storageCost = _storageCost;
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {
@@ -70,6 +73,33 @@ contract DecentralizedKV {
         paddr.hash = bytes24(keccak256(data));
         kvMap[skey] = paddr;
         idxMap[paddr.kvIdx] = skey;
+
+        storageManager.putRaw(paddr.kvIdx, data);
+    }
+
+    // Return the size of the keyed value
+    function size(bytes32 key) public view returns (uint256) {
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        return kvMap[skey].kvSize;
+    }
+
+    // Return the keyed data given off and len.  This function can be only called in JSON-RPC context.
+    function get(bytes32 key, uint256 off, uint256 len) public view returns (bytes memory) {
+        if (len == 0) {
+            return new bytes(0);
+        }
+
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr memory paddr = kvMap[skey];
+        if (off >= paddr.kvSize) {
+            return new bytes(0);
+        }
+
+        if (len + off > paddr.kvSize) {
+            len = paddr.kvSize - off;
+        }
+
+        return storageManager.getRaw(paddr.kvIdx, off, len);
     }
   
     // Remove an existing KV pair.  Refund the cost accordingly.
