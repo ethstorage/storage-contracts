@@ -54,7 +54,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 shardLen,
         uint256 nonce,
         address miner,
-        bytes[] memory data
+        bytes[] memory maskedData
     ) public {
         // Aggregate the difficulties from multiple shards.
         uint256[] memory diffs = new uint256[](shardLen);
@@ -83,21 +83,27 @@ contract DecentralizedKVMinable is DecentralizedKV {
             uint256 totalEntryBits = shardLen * shardEntryBits;
             uint256 totalEntries = 1 << totalEntryBits;
             uint256 startKvIdx = startShardId << shardEntryBits;
-            for (uint256 i = 0; i < data.length; i++) {
+            for (uint256 i = 0; i < maskedData.length; i++) {
+                require(maskedData[i].length == maxKvSize, "masked data len wrong");
+
                 uint256 kvIdx = (uint256(hash0) % totalEntries) + startKvIdx;
-                bytes32 dataHash;
                 if (kvIdx >= lastKvIdx) {
-                    dataHash = systemContract.maskedUndataHash(kvIdx);
+                    // Expect the provided masked data equals to masked undata.
+                    if (systemContract.maskedUndataHash(kvIdx) == keccak256(maskedData[i])) {
+                        matched = matched + 1;
+                    }
                 } else {
                     bytes32 skey = idxMap[kvIdx];
-                    dataHash = systemContract.maskedDataHash(skey, data[i]);
-
-                    if (kvMap[skey].hash == bytes24(keccak256(data[i]))) {
+                    // Expect the provided masked data equals to local hash
+                    if (
+                        bytes24(systemContract.unmaskedDataHash(skey, kvMap[skey].kvSize, maskedData[i])) ==
+                        kvMap[skey].hash
+                    ) {
                         matched = matched + 1;
                     }
                 }
 
-                hash0 = keccak256(abi.encode(hash0, dataHash));
+                hash0 = keccak256(abi.encode(hash0, maskedData[i]));
             }
             // We allow some mismatches if the data happens to be removed/modified.
             require(matched >= randomChecks, "insufficient PoRA");

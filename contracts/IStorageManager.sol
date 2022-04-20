@@ -18,7 +18,13 @@ interface IMiningHash {
     function hash0(bytes32) external returns (bytes32);
 
     // Return the masked hash of data.
-    function maskedDataHash(bytes32 skey, bytes memory data) external returns (bytes32);
+    // Only return hash of [0, len) bytes after unmasking, assuming the rest bytes are zeros.
+    // Return 0x0 if the rest unmasked data have non-zero bytes.
+    function unmaskedDataHash(
+        bytes32 skey,
+        uint256 len,
+        bytes memory data
+    ) external returns (bytes32);
 
     // Return the masked hash of unused KV array.
     function maskedUndataHash(uint256 kvIdx) external returns (bytes32);
