@@ -9,7 +9,7 @@ contract DecentralizedKV {
     uint256 public dcfFactor = 340282365167313208607671216367074279424;
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
-    uint40 public lastKvIdx = 0;
+    uint40 public lastKvIdx = 0;  // number of entries in the store
 
     IStorageManager public immutable storageManager;
 
@@ -125,7 +125,7 @@ contract DecentralizedKV {
         payable(msg.sender).transfer(cost());
     }
 
-    // Verify if the value matches a keyed Value.
+    // Verify if the value matches a keyed value.
     function verify(bytes32 key, bytes memory data) public view returns (bool) {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];

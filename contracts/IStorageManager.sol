@@ -12,6 +12,12 @@ interface IStorageManager {
 interface IMiningHash {
     // A CPU-intensive hash algorithm used to generate random KV indices.
     function hash0(bytes32) external returns (bytes32);
+
+    // Return the masked hash of data.
+    function maskedDataHash(bytes32 skey, bytes memory data) external returns (bytes32);
+
+    // Return the masked hash of unused KV array.
+    function maskedUndataHash(uint256 kvIdx) external returns (bytes32);
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {

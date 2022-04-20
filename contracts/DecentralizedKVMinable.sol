@@ -66,16 +66,22 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 startKvIdx = startShardId << shardEntryBits;
         for (uint256 i = 0; i < data.length; i++) {
             uint256 kvIdx = (uint256(hash0) % totalEntries) + startKvIdx;
-            bytes32 skey = idxMap[kvIdx];
+            bytes32 dataHash;
+            if (kvIdx >= lastKvIdx) {
+                dataHash = systemContract.maskedUndataHash(kvIdx);
+            } else {
+                bytes32 skey = idxMap[kvIdx];
+                dataHash = systemContract.maskedDataHash(skey, data[i]);
 
-            if (kvMap[skey].hash == bytes24(keccak256(data[i]))) {
-                matched = matched + 1;
+                if (kvMap[skey].hash == bytes24(keccak256(data[i]))) {
+                    matched = matched + 1;
+                }
             }
 
-            hash0 = keccak256(abi.encode(hash0, data[i]));
+            hash0 = keccak256(abi.encode(hash0, dataHash));
         }
         // We allow some mismatches if the data happens to be removed/modified.
-        require(matched >= randomChecks, "insufficient proof of random access");
+        require(matched >= randomChecks, "insufficient PoRA");
         }
 
         // Check if the data matches the hash in metadata.
@@ -85,12 +91,12 @@ contract DecentralizedKVMinable is DecentralizedKV {
         // Send reward to coinbase and miner
         { // avoid stack too deep error
         uint256 totalReward = 0;
-        // TODO: check
-        uint256 lastFullShardIdx = lastKvIdx >> shardEntryBits;
+        uint256 lastShardIdx = lastKvIdx >> shardEntryBits;
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
             MiningLib.MiningInfo storage info = infos[shardId];
-            if (i + startShardId <= lastFullShardIdx) {
+            if (i + startShardId < lastShardIdx) {
+                // The shard is full.
                 totalReward = totalReward + payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
             } else {
                 // TODO: check
