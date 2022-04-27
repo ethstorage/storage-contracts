@@ -20,14 +20,11 @@ interface IMiningHash {
     // Return the masked hash of data.
     // Only return hash of [0, len) bytes after unmasking, assuming the rest bytes are zeros.
     // Return 0x0 if the rest unmasked data have non-zero bytes.
-    function unmaskedDataHash(
-        bytes32 skey,
-        uint256 len,
-        bytes memory data
-    ) external returns (bytes32);
-
-    // Return the masked hash of unused KV array.
-    function maskedUndataHash(uint256 kvIdx) external returns (bytes32);
+    function maskedDataHashes(
+        uint256[] memory kvIdxs,
+        uint256[] memory kvSizes,
+        bytes[] memory data
+    ) external returns (bytes32[] memory);
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {}
