@@ -48,6 +48,21 @@ contract DecentralizedKVMinable is DecentralizedKV {
         diffAdjDivisor = _config.diffAdjDivisor;
         coinbaseShare = _config.coinbaseShare;
         emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
+
+        // Shard 0 and 1 is ready to mine.
+        infos[0].lastMineTime = _startTime;
+        infos[1].lastMineTime = _startTime;
+    }
+
+    function _preparePut() internal override {
+        if (((lastKvIdx + 1) % (1 << shardEntryBits)) == 0) {
+            // Open a new shard.
+            // The current shard should be already mined.
+            // The next shard is ready to mine (although it has no data).
+            // (TODO): Setup shard difficulty as current difficulty / factor?
+            // The previous put must cover payment from [lastMineTime, inf) >= that of [block.timestamp, inf)
+            infos[((lastKvIdx + 1) >> shardEntryBits) + 1].lastMineTime = block.timestamp;
+        }
     }
 
     function _calculateRandomAccess(
@@ -164,17 +179,13 @@ contract DecentralizedKVMinable is DecentralizedKV {
         {
             // avoid stack too deep error
             uint256 totalReward = 0;
-            uint256 lastShardIdx = lastKvIdx >> shardEntryBits;
+            uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
             for (uint256 i = 0; i < shardLen; i++) {
                 uint256 shardId = startShardId + i;
                 MiningLib.MiningInfo storage info = infos[shardId];
-                if (i + startShardId < lastShardIdx) {
-                    // The shard is full.
+                if (i + startShardId <= lastPayableShardIdx) {
+                    // Make a full shard payment.
                     totalReward += payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
-                } else if (i + startShardId == lastShardIdx) {
-                    // The shard is not full.
-                    uint256 entries = lastKvIdx % (1 << shardEntryBits);
-                    totalReward += payment(storageCost * entries, info.lastMineTime, block.timestamp);
                 }
             }
             uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;

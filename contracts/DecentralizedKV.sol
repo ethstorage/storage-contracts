@@ -64,20 +64,23 @@ contract DecentralizedKV {
         return (x * pow(dcfFactor, t0)) >> 128;
     }
 
+    function _preparePut() internal virtual {}
+
     // Evaluate the storage cost of a single put().
-    function cost() internal view returns (uint256) {
+    function upfrontPayment() public view returns (uint256) {
         return paymentInf(storageCost, block.timestamp - startTime);
     }
 
     // Write a large value to KV store.  If the KV pair exists, overrides it.  Otherwise, will append the KV to the KV array.
     function put(bytes32 key, bytes memory data) public payable {
         require(data.length <= maxKvSize, "data is too large");
+        _preparePut();
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
 
         if (paddr.hash == 0) {
             // append (require payment from sender)
-            require(msg.value >= cost(), "not enough storage cost");
+            require(msg.value >= upfrontPayment(), "not enough storage cost");
             paddr.kvIdx = lastKvIdx;
             paddr.kvSize = uint24(data.length);
             lastKvIdx = lastKvIdx + 1;
@@ -138,7 +141,7 @@ contract DecentralizedKV {
         idxMap[lastKvIdx] = 0x0;
         lastKvIdx = lastKvIdx - 1;
 
-        payable(msg.sender).transfer(cost());
+        payable(msg.sender).transfer(upfrontPayment());
     }
 
     // Verify if the value matches a keyed value.
