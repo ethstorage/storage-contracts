@@ -143,10 +143,12 @@ contract DecentralizedKVMinable is DecentralizedKV {
     function mine(
         uint256 startShardId,
         uint256 shardLen,
-        uint256 nonce,
         address miner,
+        uint256 minedTs,
+        uint256 nonce,
         bytes[] memory maskedData
     ) public {
+        require(minedTs <= block.timestamp, "minedTs too large");
         // Aggregate the difficulties from multiple shards.
         uint256[] memory diffs = new uint256[](shardLen);
         uint256 diff = 0;
@@ -154,20 +156,14 @@ contract DecentralizedKVMinable is DecentralizedKV {
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
             MiningLib.MiningInfo storage info = infos[shardId];
-            diffs[i] = MiningLib.expectedDiff(
-                info,
-                block.timestamp,
-                targetIntervalSec,
-                cutoff,
-                diffAdjDivisor,
-                minimumDiff
-            );
+            require(minedTs >= info.lastMineTime, "minedTs too small");
+            diffs[i] = MiningLib.expectedDiff(info, minedTs, targetIntervalSec, cutoff, diffAdjDivisor, minimumDiff);
             diff = diff + diffs[i];
 
             hash0 = keccak256(abi.encode(hash0, shardId, infos[shardId].miningHash));
         }
 
-        hash0 = systemContract.hash0(keccak256(abi.encode(hash0, nonce, miner)));
+        hash0 = systemContract.hash0(keccak256(abi.encode(hash0, miner, minedTs, nonce)));
         hash0 = _checkProofOfRandomAccess(startShardId, shardLen, hash0, maskedData);
 
         // Check if the data matches the hash in metadata.
@@ -185,7 +181,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
                 MiningLib.MiningInfo storage info = infos[shardId];
                 if (i + startShardId <= lastPayableShardIdx) {
                     // Make a full shard payment.
-                    totalReward += payment(storageCost << shardEntryBits, info.lastMineTime, block.timestamp);
+                    totalReward += _payment(storageCost << shardEntryBits, info.lastMineTime, minedTs);
                 }
             }
             uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
@@ -196,7 +192,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
 
         // Update info.
         for (uint256 i = 0; i < shardLen; i++) {
-            MiningLib.update(infos[startShardId + i], block.timestamp, diffs[i], hash0);
+            MiningLib.update(infos[startShardId + i], minedTs, diffs[i], hash0);
         }
     }
 }
