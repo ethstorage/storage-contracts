@@ -54,15 +54,19 @@ contract DecentralizedKVMinable is DecentralizedKV {
         infos[1].lastMineTime = _startTime;
     }
 
-    function _preparePut() internal override {
+    function _preparePutWithTimestamp(uint256 timestamp) internal {
         if (((lastKvIdx + 1) % (1 << shardEntryBits)) == 0) {
             // Open a new shard.
             // The current shard should be already mined.
             // The next shard is ready to mine (although it has no data).
             // (TODO): Setup shard difficulty as current difficulty / factor?
             // The previous put must cover payment from [lastMineTime, inf) >= that of [block.timestamp, inf)
-            infos[((lastKvIdx + 1) >> shardEntryBits) + 1].lastMineTime = block.timestamp;
+            infos[((lastKvIdx + 1) >> shardEntryBits) + 1].lastMineTime = timestamp;
         }
+    }
+
+    function _preparePut() internal override virtual {
+        return _preparePutWithTimestamp(block.timestamp);
     }
 
     function _calculateRandomAccess(
@@ -139,16 +143,16 @@ contract DecentralizedKVMinable is DecentralizedKV {
         return hash0;
     }
 
-    // We allow cross mine multiple shards by aggregate their difficulties.
-    function mine(
+    function _mine(
+        uint256 timestamp,
         uint256 startShardId,
         uint256 shardLen,
         address miner,
         uint256 minedTs,
         uint256 nonce,
         bytes[] memory maskedData
-    ) public {
-        require(minedTs <= block.timestamp, "minedTs too large");
+    ) internal {
+        require(minedTs <= timestamp, "minedTs too large");
         // Aggregate the difficulties from multiple shards.
         uint256[] memory diffs = new uint256[](shardLen);
         uint256 diff = 0;
@@ -194,5 +198,17 @@ contract DecentralizedKVMinable is DecentralizedKV {
         for (uint256 i = 0; i < shardLen; i++) {
             MiningLib.update(infos[startShardId + i], minedTs, diffs[i], hash0);
         }
+    }
+
+    // We allow cross mine multiple shards by aggregate their difficulties.
+    function mine(
+        uint256 startShardId,
+        uint256 shardLen,
+        address miner,
+        uint256 minedTs,
+        uint256 nonce,
+        bytes[] memory maskedData
+    ) public virtual {
+        return _mine(block.timestamp, startShardId, shardLen, miner, minedTs, nonce, maskedData);
     }
 }
