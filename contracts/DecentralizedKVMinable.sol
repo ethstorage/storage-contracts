@@ -8,7 +8,6 @@ contract DecentralizedKVMinable is DecentralizedKV {
     struct Config {
         uint256 maxKvSizeBits;
         uint256 shardSizeBits;
-        uint256 shardEntryBits;
         uint256 randomChecks;
         uint256 minimumDiff;
         uint256 targetIntervalSec;
@@ -73,10 +72,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLen,
         bytes32 hash0,
-        bytes[] memory maskedData
+        uint256 nRandomAccess
     ) internal view returns (uint256[] memory kvIdxs, uint256[] memory kvSizes) {
-        kvIdxs = new uint256[](maskedData.length);
-        kvSizes = new uint256[](maskedData.length);
+        kvIdxs = new uint256[](nRandomAccess);
+        kvSizes = new uint256[](nRandomAccess);
 
         uint256 totalEntryBits = shardLen * shardEntryBits;
         uint256 totalEntries = 1 << totalEntryBits;
@@ -85,9 +84,9 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes32 rhash = hash0;
         uint256 randomBits = uint256(rhash);
 
-        for (uint256 i = 0; i < maskedData.length; i++) {
+        for (uint256 i = 0; i < nRandomAccess; i++) {
             uint256 kvIdx = (randomBits % totalEntries) + startKvIdx;
-            if (kvIdxs[i] >= lastKvIdx) {
+            if (kvIdx >= lastKvIdx) {
                 kvSizes[i] = maxKvSize;
             } else {
                 kvSizes[i] = kvMap[idxMap[kvIdx]].kvSize;
@@ -97,7 +96,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             bits = bits - totalEntryBits;
             randomBits = randomBits >> totalEntryBits;
             if (bits < totalEntryBits) {
-                rhash = bytes32(rhash);
+                rhash = keccak256(abi.encode(rhash));
                 bits = 256;
                 randomBits = uint256(rhash);
             }
@@ -114,7 +113,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             startShardId,
             shardLen,
             hash0,
-            maskedData
+            maskedData.length
         );
         bytes32[] memory dataHashes = systemContract.maskedDataHashes(kvIdxs, kvSizes, maskedData);
         uint256 matched = 0;

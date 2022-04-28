@@ -33,4 +33,13 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
     ) public override {
         return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, maskedData);
     }
+
+    function calculateRandomAccess(
+        uint256 startShardId,
+        uint256 shardLen,
+        bytes32 hash0,
+        uint256 nRandomAccess
+    ) public view returns (uint256[] memory kvIdxs, uint256[] memory kvSizes) {
+        return _calculateRandomAccess(startShardId, shardLen, hash0, nRandomAccess);
+    }
 }
