@@ -33,7 +33,7 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
             uint256 kvSize = kvSizes[i];
             bytes32 h;
             assembly {
-                h := keccak256(add(mdata, 20), kvSize)
+                h := keccak256(add(mdata, 0x20), kvSize)
             }
             // TODO: check the rest data are zeros.
             hashes[i] = h;

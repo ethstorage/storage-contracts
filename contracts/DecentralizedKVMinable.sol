@@ -70,14 +70,14 @@ contract DecentralizedKVMinable is DecentralizedKV {
 
     function _calculateRandomAccess(
         uint256 startShardId,
-        uint256 shardLen,
+        uint256 shardLenBits,
         bytes32 hash0,
         uint256 nRandomAccess
     ) internal view returns (uint256[] memory kvIdxs, uint256[] memory kvSizes) {
         kvIdxs = new uint256[](nRandomAccess);
         kvSizes = new uint256[](nRandomAccess);
 
-        uint256 totalEntryBits = shardLen * shardEntryBits;
+        uint256 totalEntryBits = shardLenBits + shardEntryBits;
         uint256 totalEntries = 1 << totalEntryBits;
         uint256 startKvIdx = startShardId << shardEntryBits;
         uint256 bits = 256;
@@ -105,13 +105,13 @@ contract DecentralizedKVMinable is DecentralizedKV {
 
     function _checkProofOfRandomAccess(
         uint256 startShardId,
-        uint256 shardLen,
+        uint256 shardLenBits,
         bytes32 hash0,
         bytes[] memory maskedData
-    ) internal returns (bytes32 hash) {
+    ) internal view returns (bytes32 hash) {
         (uint256[] memory kvIdxs, uint256[] memory kvSizes) = _calculateRandomAccess(
             startShardId,
-            shardLen,
+            shardLenBits,
             hash0,
             maskedData.length
         );
@@ -145,7 +145,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
     function _mine(
         uint256 timestamp,
         uint256 startShardId,
-        uint256 shardLen,
+        uint256 shardLenBits,
         address miner,
         uint256 minedTs,
         uint256 nonce,
@@ -153,6 +153,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
     ) internal {
         require(minedTs <= timestamp, "minedTs too large");
         // Aggregate the difficulties from multiple shards.
+        uint256 shardLen = 1 << shardLenBits;
         uint256[] memory diffs = new uint256[](shardLen);
         uint256 diff = 0;
         bytes32 hash0 = bytes32(0);
@@ -170,8 +171,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
         hash0 = _checkProofOfRandomAccess(startShardId, shardLen, hash0, maskedData);
 
         // Check if the data matches the hash in metadata.
-        uint256 required = uint256(2**256 - 1) / diff;
-        require(uint256(hash0) <= required, "diff not match");
+        {
+            uint256 required = uint256(2**256 - 1) / diff;
+            require(uint256(hash0) <= required, "diff not match");
+        }
 
         // Mining is successful.
         // Send reward to coinbase and miner.
