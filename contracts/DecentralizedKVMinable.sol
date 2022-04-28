@@ -65,7 +65,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         }
     }
 
-    function _preparePut() internal override virtual {
+    function _preparePut() internal virtual override {
         return _preparePutWithTimestamp(block.timestamp);
     }
 
