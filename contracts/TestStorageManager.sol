@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./IStorageManager.sol";
-import "./Memory.sol";
 
 contract TestStorageManager is IStorageManager {
     mapping(uint256 => bytes) dataMap;
@@ -14,7 +13,7 @@ contract TestStorageManager is IStorageManager {
         uint256 len
     ) external view override returns (bytes memory) {
         bytes memory data = dataMap[kvIdx];
-        if (data.length >= off) {
+        if (off >= data.length) {
             return bytes("");
         }
         if (len > data.length - off) {
@@ -22,7 +21,9 @@ contract TestStorageManager is IStorageManager {
         }
 
         bytes memory ret = new bytes(len);
-        Memory.copy(Memory.ptr(data), Memory.ptr(ret), len);
+        for (uint256 i = 0; i < len; i++) {
+            ret[i] = data[i + off];
+        }
         return ret;
     }
 
