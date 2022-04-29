@@ -11,7 +11,13 @@ describe("DecentralizedKV Test", function () {
     const sc = await SystemContract.deploy(32);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
-    const kv = await MinabledKV.deploy([5, 8, 6, 0, 60, 40, 1024, 0, sc.address], 0, 0, 0);
+    const kv = await MinabledKV.deploy(
+      [5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
+      0,
+      0,
+      0,
+      ethers.utils.formatBytes32String("")
+    );
     await kv.deployed();
 
     for (let i = 0; i < 12; i++) {
@@ -42,7 +48,13 @@ describe("DecentralizedKV Test", function () {
     const sc = await SystemContract.deploy(8);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
-    const kv = await MinabledKV.deploy([12, 31, 20, 0, 60, 40, 1024, 0, sc.address], 0, 0, 0);
+    const kv = await MinabledKV.deploy(
+      [12, 31, 20, 0, 60, 40, 1024, 0, sc.address],
+      0,
+      0,
+      0,
+      ethers.utils.formatBytes32String("")
+    );
     await kv.deployed();
 
     let h0 = "0x0102030405060708091011121314151617181920212223242526272829303132";
@@ -63,7 +75,13 @@ describe("DecentralizedKV Test", function () {
     const sc = await SystemContract.deploy(32);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
-    const kv = await MinabledKV.deploy([5, 8, 6, 0, 60, 40, 1024, 0, sc.address], 0, 0, 0);
+    const kv = await MinabledKV.deploy(
+      [5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
+      0,
+      0,
+      0,
+      ethers.utils.formatBytes32String("")
+    );
     await kv.deployed();
 
     for (let i = 0; i < 12; i++) {

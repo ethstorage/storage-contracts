@@ -34,7 +34,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
         Config memory _config,
         uint256 _startTime,
         uint256 _storageCost,
-        uint256 _dcfFactor
+        uint256 _dcfFactor,
+        bytes32 _genesisHash
     ) DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor) {
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
@@ -50,7 +51,9 @@ contract DecentralizedKVMinable is DecentralizedKV {
 
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
+        infos[0].miningHash = _genesisHash;
         infos[1].lastMineTime = _startTime;
+        infos[1].miningHash = _genesisHash;
     }
 
     function _preparePutWithTimestamp(uint256 timestamp) internal {
@@ -60,7 +63,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
             // The next shard is ready to mine (although it has no data).
             // (TODO): Setup shard difficulty as current difficulty / factor?
             // The previous put must cover payment from [lastMineTime, inf) >= that of [block.timestamp, inf)
-            infos[((lastKvIdx + 1) >> shardEntryBits) + 1].lastMineTime = timestamp;
+            uint256 nextShardId = ((lastKvIdx + 1) >> shardEntryBits) + 1;
+            infos[nextShardId].lastMineTime = timestamp;
+            // use previous shard miningHash to shorten the windows for pre-mining.
+            infos[nextShardId].miningHash = infos[nextShardId - 1].miningHash;
         }
     }
 
@@ -142,6 +148,34 @@ contract DecentralizedKVMinable is DecentralizedKV {
         return hash0;
     }
 
+    // Aggregate the difficulties from multiple shards.
+    function _calculateDiffAndInitHash(
+        uint256 startShardId,
+        uint256 shardLen,
+        uint256 minedTs
+    )
+        internal
+        view
+        returns (
+            uint256 diff,
+            uint256[] memory diffs,
+            bytes32 hash0
+        )
+    {
+        diffs = new uint256[](shardLen);
+        diff = 0;
+        hash0 = bytes32(0);
+        for (uint256 i = 0; i < shardLen; i++) {
+            uint256 shardId = startShardId + i;
+            MiningLib.MiningInfo storage info = infos[shardId];
+            require(minedTs >= info.lastMineTime, "minedTs too small");
+            diffs[i] = MiningLib.expectedDiff(info, minedTs, targetIntervalSec, cutoff, diffAdjDivisor, minimumDiff);
+            diff = diff + diffs[i];
+
+            hash0 = keccak256(abi.encode(hash0, shardId, infos[shardId].miningHash));
+        }
+    }
+
     function _mine(
         uint256 timestamp,
         uint256 startShardId,
@@ -152,21 +186,12 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes[] memory maskedData
     ) internal {
         require(minedTs <= timestamp, "minedTs too large");
-        // Aggregate the difficulties from multiple shards.
         uint256 shardLen = 1 << shardLenBits;
-        uint256[] memory diffs = new uint256[](shardLen);
-        uint256 diff = 0;
-        bytes32 hash0 = bytes32(0);
-        for (uint256 i = 0; i < shardLen; i++) {
-            uint256 shardId = startShardId + i;
-            MiningLib.MiningInfo storage info = infos[shardId];
-            require(minedTs >= info.lastMineTime, "minedTs too small");
-            diffs[i] = MiningLib.expectedDiff(info, minedTs, targetIntervalSec, cutoff, diffAdjDivisor, minimumDiff);
-            diff = diff + diffs[i];
-
-            hash0 = keccak256(abi.encode(hash0, shardId, infos[shardId].miningHash));
-        }
-
+        (uint256 diff, uint256[] memory diffs, bytes32 hash0) = _calculateDiffAndInitHash(
+            startShardId,
+            shardLen,
+            minedTs
+        );
         hash0 = systemContract.hash0(keccak256(abi.encode(hash0, miner, minedTs, nonce)));
         hash0 = _checkProofOfRandomAccess(startShardId, shardLen, hash0, maskedData);
 
@@ -205,12 +230,12 @@ contract DecentralizedKVMinable is DecentralizedKV {
     // We allow cross mine multiple shards by aggregate their difficulties.
     function mine(
         uint256 startShardId,
-        uint256 shardLen,
+        uint256 shardLenBits,
         address miner,
         uint256 minedTs,
         uint256 nonce,
         bytes[] memory maskedData
     ) public virtual {
-        return _mine(block.timestamp, startShardId, shardLen, miner, minedTs, nonce, maskedData);
+        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, maskedData);
     }
 }

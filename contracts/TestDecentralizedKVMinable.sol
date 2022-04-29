@@ -11,8 +11,9 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
         Config memory _config,
         uint256 _startTime,
         uint256 _storageCost,
-        uint256 _dcfFactor
-    ) DecentralizedKVMinable(_config, _startTime, _storageCost, _dcfFactor) {}
+        uint256 _dcfFactor,
+        bytes32 _genesisHash
+    ) DecentralizedKVMinable(_config, _startTime, _storageCost, _dcfFactor, _genesisHash) {}
 
     function setTimestamp(uint256 ts) public {
         require(ts > currentTimestamp, "ts");
