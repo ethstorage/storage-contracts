@@ -62,7 +62,7 @@ describe("DecentralizedKV Test", function () {
     });
   });
 
-  it("put with payment", async function () {
+  it("put with payment and yearly 0.9 dcf", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
     const sm = await StorageManager.deploy();
     await sm.deployed();
