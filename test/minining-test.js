@@ -3,7 +3,10 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
-var PadTo32 = (x) => x.padEnd(66, "0");
+var padRight32 = (x) => x.padEnd(66, "0");
+var padLeft32 = (x) => ethers.utils.hexZeroPad(x, 32);
+var formatB32Str = (x) => ethers.utils.formatBytes32String(x);
+var keccak256 = (x) => ethers.utils.keccak256(x);
 
 describe("DecentralizedKV Test", function () {
   it("calculateRandomAccessSmall", async function () {
@@ -90,38 +93,59 @@ describe("DecentralizedKV Test", function () {
 
     let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
     let r0 = await kv.checkProofOfRandomAccess(0, 1, h0, [
-      PadTo32(ethers.utils.hexlify(5)),
-      PadTo32(ethers.utils.hexlify(11)),
-      PadTo32(ethers.utils.hexlify(15)), // should be zero
-      PadTo32(ethers.utils.hexlify(13)), // should be zero
-      PadTo32(ethers.utils.hexlify(5)),
-      PadTo32(ethers.utils.hexlify(10)),
-      PadTo32(ethers.utils.hexlify(15)), // should be zero
-      PadTo32(ethers.utils.hexlify(14)), // should be zero
-      PadTo32(ethers.utils.hexlify(8)),
-      PadTo32(ethers.utils.hexlify(1)),
+      padRight32(ethers.utils.hexlify(5)),
+      padRight32(ethers.utils.hexlify(11)),
+      padRight32(ethers.utils.hexlify(15)), // should be zero
+      padRight32(ethers.utils.hexlify(13)), // should be zero
+      padRight32(ethers.utils.hexlify(5)),
+      padRight32(ethers.utils.hexlify(10)),
+      padRight32(ethers.utils.hexlify(15)), // should be zero
+      padRight32(ethers.utils.hexlify(14)), // should be zero
+      padRight32(ethers.utils.hexlify(8)),
+      padRight32(ethers.utils.hexlify(1)),
     ]);
     let r1 = await kv.checkProofOfRandomAccess(0, 1, h0, [
-      PadTo32(ethers.utils.hexlify(5)),
-      PadTo32(ethers.utils.hexlify(11)),
-      PadTo32("0x"), // should be zero
-      PadTo32("0x"), // should be zero
-      PadTo32(ethers.utils.hexlify(5)),
-      PadTo32(ethers.utils.hexlify(10)),
-      PadTo32("0x"), // should be zero
+      padRight32(ethers.utils.hexlify(5)),
+      padRight32(ethers.utils.hexlify(11)),
+      padRight32("0x"), // should be zero
+      padRight32("0x"), // should be zero
+      padRight32(ethers.utils.hexlify(5)),
+      padRight32(ethers.utils.hexlify(10)),
+      padRight32("0x"), // should be zero
     ]);
     await expect(
       kv.checkProofOfRandomAccess(0, 1, h0, [
-        PadTo32(ethers.utils.hexlify(5)),
-        PadTo32(ethers.utils.hexlify(11)),
-        PadTo32(ethers.utils.hexlify(15)), // should be zero
-        PadTo32(ethers.utils.hexlify(13)), // should be zero
-        PadTo32(ethers.utils.hexlify(5)),
-        PadTo32(ethers.utils.hexlify(10)),
-        PadTo32(ethers.utils.hexlify(15)), // should be zero
-        PadTo32(ethers.utils.hexlify(14)), // should be zero
-        PadTo32(ethers.utils.hexlify(8)),
+        padRight32(ethers.utils.hexlify(5)),
+        padRight32(ethers.utils.hexlify(11)),
+        padRight32(ethers.utils.hexlify(15)), // should be zero
+        padRight32(ethers.utils.hexlify(13)), // should be zero
+        padRight32(ethers.utils.hexlify(5)),
+        padRight32(ethers.utils.hexlify(10)),
+        padRight32(ethers.utils.hexlify(15)), // should be zero
+        padRight32(ethers.utils.hexlify(14)), // should be zero
+        padRight32(ethers.utils.hexlify(8)),
       ])
     ).to.be.revertedWith("insufficient PoRA");
+  });
+
+  it("calculateDiffAndInitHash", async function () {
+    const SystemContract = await ethers.getContractFactory("TestSystemContract");
+    const sc = await SystemContract.deploy(32);
+    await sc.deployed();
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
+    const kv = await MinabledKV.deploy([5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
+    await kv.deployed();
+
+    let m0 = await kv.calculateDiffAndInitHash(0, 1, 5);
+    let h0 = keccak256(ethers.utils.concat([formatB32Str(""), padLeft32("0x00"), formatB32Str("genesis")]));
+    expect(m0).to.be.eql([ToBig("10"), [ToBig("10")], h0]);
+
+    let m1 = await kv.calculateDiffAndInitHash(1, 1, 5);
+    let h1 = keccak256(ethers.utils.concat([formatB32Str(""), padLeft32("0x01"), formatB32Str("genesis")]));
+    expect(m1).to.be.eql([ToBig("10"), [ToBig("10")], h1]);
+
+    let m01 = await kv.calculateDiffAndInitHash(0, 2, 5);
+    let h01 = keccak256(ethers.utils.concat([h0, padLeft32("0x01"), formatB32Str("genesis")]));
+    expect(m01).to.be.eql([ToBig("20"), [ToBig("10"), ToBig("10")], h01]);
   });
 });

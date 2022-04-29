@@ -52,4 +52,20 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
     ) public view returns (bytes32 hash) {
         return _checkProofOfRandomAccess(startShardId, shardLen, hash0, maskedData);
     }
+
+    function calculateDiffAndInitHash(
+        uint256 startShardId,
+        uint256 shardLen,
+        uint256 minedTs
+    )
+        public
+        view
+        returns (
+            uint256 diff,
+            uint256[] memory diffs,
+            bytes32 hash0
+        )
+    {
+        return _calculateDiffAndInitHash(startShardId, shardLen, minedTs);
+    }
 }

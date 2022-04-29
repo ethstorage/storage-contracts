@@ -23,6 +23,9 @@ library MiningLib {
         uint256 diff = info.difficulty;
         if (interval < targetIntervalSec) {
             diff = diff + ((1 - interval / cutoff) * diff) / diffAdjDivisor;
+            if (diff < minDiff) {
+                diff = minDiff;
+            }
         } else {
             uint256 dec = ((interval / cutoff - 1) * diff) / diffAdjDivisor;
             if (dec + minDiff > diff) {
