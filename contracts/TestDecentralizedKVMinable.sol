@@ -68,4 +68,15 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
     {
         return _calculateDiffAndInitHash(startShardId, shardLen, minedTs);
     }
+
+    function rewardMiner(
+        uint256 startShardId,
+        uint256 shardLen,
+        address miner,
+        uint256 minedTs,
+        uint256[] memory diffs,
+        bytes32 hash0
+    ) public {
+        _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
+    }
 }

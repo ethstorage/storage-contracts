@@ -176,6 +176,41 @@ contract DecentralizedKVMinable is DecentralizedKV {
         }
     }
 
+    function _rewardMiner(
+        uint256 startShardId,
+        uint256 shardLen,
+        address miner,
+        uint256 minedTs,
+        uint256[] memory diffs,
+        bytes32 hash0
+    ) internal {
+        // Mining is successful.
+        // Send reward to coinbase and miner.
+        {
+            // avoid stack too deep error
+            uint256 totalReward = 0;
+            uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
+            for (uint256 i = 0; i < shardLen; i++) {
+                uint256 shardId = startShardId + i;
+                MiningLib.MiningInfo storage info = infos[shardId];
+                if (i + startShardId <= lastPayableShardIdx) {
+                    // Make a full shard payment.
+                    totalReward += _payment(storageCost << shardEntryBits, info.lastMineTime, minedTs);
+                }
+            }
+            uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
+            uint256 minerReward = totalReward - coinbaseReward;
+            // TODO: avoid reentrancy attack
+            payable(block.coinbase).transfer(coinbaseReward);
+            payable(miner).transfer(minerReward);
+        }
+
+        // Update info.
+        for (uint256 i = 0; i < shardLen; i++) {
+            MiningLib.update(infos[startShardId + i], minedTs, diffs[i], hash0);
+        }
+    }
+
     function _mine(
         uint256 timestamp,
         uint256 startShardId,
@@ -201,30 +236,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             require(uint256(hash0) <= required, "diff not match");
         }
 
-        // Mining is successful.
-        // Send reward to coinbase and miner.
-        {
-            // avoid stack too deep error
-            uint256 totalReward = 0;
-            uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
-            for (uint256 i = 0; i < shardLen; i++) {
-                uint256 shardId = startShardId + i;
-                MiningLib.MiningInfo storage info = infos[shardId];
-                if (i + startShardId <= lastPayableShardIdx) {
-                    // Make a full shard payment.
-                    totalReward += _payment(storageCost << shardEntryBits, info.lastMineTime, minedTs);
-                }
-            }
-            uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
-            uint256 minerReward = totalReward - coinbaseReward;
-            payable(block.coinbase).transfer(coinbaseReward);
-            payable(miner).transfer(minerReward);
-        }
-
-        // Update info.
-        for (uint256 i = 0; i < shardLen; i++) {
-            MiningLib.update(infos[startShardId + i], minedTs, diffs[i], hash0);
-        }
+        _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
 
     // We allow cross mine multiple shards by aggregate their difficulties.
