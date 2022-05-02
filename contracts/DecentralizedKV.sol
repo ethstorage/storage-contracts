@@ -29,7 +29,7 @@ contract DecentralizedKV {
         uint256 _startTime,
         uint256 _storageCost,
         uint256 _dcfFactor
-    ) {
+    ) payable {
         storageManager = _storageManager;
         startTime = _startTime;
         maxKvSize = _maxKvSize;
@@ -51,7 +51,7 @@ contract DecentralizedKV {
     }
 
     // Evaluate payment from [t0, t1) seconds
-    function _payment(
+    function _paymentInInterval(
         uint256 x,
         uint256 t0,
         uint256 t1
@@ -64,7 +64,14 @@ contract DecentralizedKV {
         return (x * pow(dcfFactor, t0)) >> 128;
     }
 
-    function _preparePut() internal virtual {}
+    // Evaluate payment from timestamp [fromTs, toTs)
+    function _paymentIn(
+        uint256 x,
+        uint256 fromTs,
+        uint256 toTs
+    ) internal view returns (uint256) {
+        return _paymentInInterval(x, fromTs - startTime, toTs - startTime);
+    }
 
     function _upfrontPayment(uint256 ts) internal view returns (uint256) {
         return _paymentInf(storageCost, ts - startTime);
@@ -74,6 +81,8 @@ contract DecentralizedKV {
     function upfrontPayment() public view virtual returns (uint256) {
         return _upfrontPayment(block.timestamp);
     }
+
+    function _preparePut() internal virtual {}
 
     // Write a large value to KV store.  If the KV pair exists, overrides it.  Otherwise, will append the KV to the KV array.
     function put(bytes32 key, bytes memory data) public payable {

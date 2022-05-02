@@ -36,7 +36,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 _storageCost,
         uint256 _dcfFactor,
         bytes32 _genesisHash
-    ) DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor) {
+    )
+        payable
+        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor)
+    {
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
@@ -55,6 +58,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
         infos[1].lastMineTime = _startTime;
         infos[1].miningHash = _genesisHash;
     }
+
+    function sendValue() public payable {}
 
     function _preparePutWithTimestamp(uint256 timestamp) internal {
         if (((lastKvIdx + 1) % (1 << shardEntryBits)) == 0) {
@@ -186,24 +191,21 @@ contract DecentralizedKVMinable is DecentralizedKV {
     ) internal {
         // Mining is successful.
         // Send reward to coinbase and miner.
-        {
-            // avoid stack too deep error
-            uint256 totalReward = 0;
-            uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
-            for (uint256 i = 0; i < shardLen; i++) {
-                uint256 shardId = startShardId + i;
-                MiningLib.MiningInfo storage info = infos[shardId];
-                if (i + startShardId <= lastPayableShardIdx) {
-                    // Make a full shard payment.
-                    totalReward += _payment(storageCost << shardEntryBits, info.lastMineTime, minedTs);
-                }
+        uint256 totalReward = 0;
+        uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
+        for (uint256 i = 0; i < shardLen; i++) {
+            uint256 shardId = startShardId + i;
+            MiningLib.MiningInfo storage info = infos[shardId];
+            if (i + startShardId <= lastPayableShardIdx) {
+                // Make a full shard payment.
+                totalReward += _paymentIn(storageCost << shardEntryBits, info.lastMineTime, minedTs);
             }
-            uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
-            uint256 minerReward = totalReward - coinbaseReward;
-            // TODO: avoid reentrancy attack
-            payable(block.coinbase).transfer(coinbaseReward);
-            payable(miner).transfer(minerReward);
         }
+        uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
+        uint256 minerReward = totalReward - coinbaseReward;
+        // TODO: avoid reentrancy attack
+        payable(block.coinbase).transfer(coinbaseReward);
+        payable(miner).transfer(minerReward);
 
         // Update info.
         for (uint256 i = 0; i < shardLen; i++) {

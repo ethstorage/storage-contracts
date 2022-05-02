@@ -148,4 +148,38 @@ describe("DecentralizedKV Test", function () {
     let h01 = keccak256(ethers.utils.concat([h0, padLeft32("0x01"), formatB32Str("genesis")]));
     expect(m01).to.be.eql([ToBig("20"), [ToBig("10"), ToBig("10")], h01]);
   });
+
+  it("rewardMiner with 0.5 dcf", async function () {
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    let wallet = new ethers.Wallet("0x123456", owner.provider);
+
+    const SystemContract = await ethers.getContractFactory("TestSystemContract");
+    const sc = await SystemContract.deploy(32);
+    await sc.deployed();
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
+    const kv = await MinabledKV.deploy(
+      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      5,
+      "1000000000000000000", // for all
+      "170141183460469231731687303715884105728", // 0.5
+      formatB32Str("genesis")
+    );
+    await kv.deployed();
+
+    // Total should be 1.0 * 2 shards * 8
+    await kv.sendValue({ value: ethers.utils.parseEther("16.0") });
+
+    await kv.rewardMiner(0, 2, wallet.address, 8, [10, 10], padLeft32("0x"));
+
+    // time 5,6,7 will have (0.5 + 0.25 + 0.125) * 2 shards * 8 = 14.0
+    expect(await wallet.getBalance()).to.be.equal("14000000000000000000");
+
+    await kv.rewardMiner(0, 2, wallet.address, 9, [10, 10], padLeft32("0x"));
+    // time 8 will have (0.5 + 0.25 + 0.125 + 0.0625) * 2 shards * 8 = 15.0
+    expect(await wallet.getBalance()).to.be.equal("15000000000000000000");
+
+    await kv.rewardMiner(0, 2, wallet.address, 200, [10, 10], padLeft32("0x"));
+    // time 8 will have (0.5 + 0.25 + 0.125 + 0.0625) * 2 shards * 8 = 15.0
+    expect(await wallet.getBalance()).to.be.equal("16000000000000000000");
+  });
 });
