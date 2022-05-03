@@ -137,9 +137,10 @@ contract DecentralizedKV {
             len = paddr.kvSize - off;
         }
 
-        return storageManager.getRaw(paddr.kvIdx, off, len);
+        return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
     }
 
+    // Remove an existing KV pair to a recipient.  Refund the cost accordingly.
     function removeTo(bytes32 key, address to) public {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
@@ -151,13 +152,15 @@ contract DecentralizedKV {
         kvMap[skey] = PhyAddr({kvIdx: 0, kvSize: 0, hash: 0});
 
         // move last kv to current kv
-        bytes32 lastSkey = idxMap[lastKvIdx];
+        bytes32 lastSkey = idxMap[lastKvIdx - 1];
         idxMap[kvIdx] = lastSkey;
         kvMap[lastSkey].kvIdx = kvIdx;
 
         // remove the last Kv
-        idxMap[lastKvIdx] = 0x0;
+        idxMap[lastKvIdx - 1] = 0x0;
         lastKvIdx = lastKvIdx - 1;
+
+        storageManager.removeRaw(lastKvIdx, kvIdx);
 
         payable(to).transfer(upfrontPayment());
     }
@@ -171,6 +174,8 @@ contract DecentralizedKV {
     function verify(bytes32 key, bytes memory data) public view returns (bool) {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
+
+        require(paddr.hash != 0, "kv not exist");
 
         if (paddr.kvSize != data.length) {
             return false;

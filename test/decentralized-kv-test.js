@@ -107,4 +107,65 @@ describe("DecentralizedKV Test", function () {
     await kv.setTimestamp(3600 * 24 * 365);
     expect(await kv.upfrontPayment()).to.equal("900000000000000000");
   });
+
+  it("removes", async function () {
+    const [addr0, addr1] = await ethers.getSigners();
+
+    const StorageManager = await ethers.getContractFactory("TestStorageManager");
+    const sm = await StorageManager.deploy();
+    await sm.deployed();
+    const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
+    // 1e18 cost with 0.5 discount rate per second
+    const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
+    await kv.deployed();
+
+    // write random data
+    for (let i = 0; i < 10; i++) {
+      await kv.connect(addr0).put(ethers.utils.formatBytes32String(i.toString()), ethers.utils.hexlify(i));
+    }
+
+    for (let i = 0; i < 5; i++) {
+      await kv.connect(addr1).put(ethers.utils.formatBytes32String(i.toString()), ethers.utils.hexlify(i + 100));
+    }
+
+    // read random data and check
+    for (let i = 0; i < 10; i++) {
+      expect(await kv.connect(addr0).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal(
+        ethers.utils.hexlify(i)
+      );
+    }
+
+    for (let i = 0; i < 5; i++) {
+      expect(await kv.connect(addr1).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal(
+        ethers.utils.hexlify(i + 100)
+      );
+    }
+
+    await kv.connect(addr0).remove(ethers.utils.formatBytes32String("5"));
+    await kv.connect(addr1).remove(ethers.utils.formatBytes32String("0"));
+    await kv.connect(addr0).remove(ethers.utils.formatBytes32String("1"));
+    await kv.connect(addr1).remove(ethers.utils.formatBytes32String("2"));
+    await kv.connect(addr0).remove(ethers.utils.formatBytes32String("6"));
+
+    // Read the data to see if the result is expected.
+    for (let i = 0; i < 10; i++) {
+      if (i == 1 || i == 5 || i == 6) {
+        expect(await kv.connect(addr0).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal("0x");
+      } else {
+        expect(await kv.connect(addr0).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal(
+          ethers.utils.hexlify(i)
+        );
+      }
+    }
+
+    for (let i = 0; i < 5; i++) {
+      if (i == 0 || i == 2) {
+        expect(await kv.connect(addr1).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal("0x");
+      } else {
+        expect(await kv.connect(addr1).get(ethers.utils.formatBytes32String(i.toString()), 0, 1024)).to.equal(
+          ethers.utils.hexlify(i + 100)
+        );
+      }
+    }
+  });
 });

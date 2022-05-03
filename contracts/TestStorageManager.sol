@@ -8,11 +8,15 @@ contract TestStorageManager is IStorageManager {
 
     // Get a raw data from underlying storage.
     function getRaw(
+        bytes32 hash,
         uint256 kvIdx,
         uint256 off,
         uint256 len
     ) external view override returns (bytes memory) {
         bytes memory data = dataMap[kvIdx];
+
+        require(hash == bytes24(keccak256(data)), "getRaw hash mismatch");
+
         if (off >= data.length) {
             return bytes("");
         }
@@ -30,5 +34,11 @@ contract TestStorageManager is IStorageManager {
     // Set a raw data to underlying storage.
     function putRaw(uint256 kvIdx, bytes memory data) external override {
         dataMap[kvIdx] = data;
+    }
+
+    // Set a raw data to underlying storage.
+    function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) external override {
+        dataMap[toKvIdx] = dataMap[fromKvIdx];
+        delete dataMap[fromKvIdx];
     }
 }
