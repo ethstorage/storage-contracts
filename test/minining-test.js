@@ -150,7 +150,7 @@ describe("Basic Func Test", function () {
   });
 });
 
-describe("rewardMiner without put", function () {
+describe("rewardMiner", function () {
   it("rewardMiner with 0.5 dcf/s", async function () {
     const [owner, addr1, addr2] = await ethers.getSigners();
     let wallet = new ethers.Wallet("0x123456", owner.provider);
@@ -182,6 +182,76 @@ describe("rewardMiner without put", function () {
     await kv.rewardMiner(0, 2, wallet.address, 200, [10, 10], padLeft32("0x"));
     // time 8 will have (0.5 + 0.25 + 0.125 + 0.0625) * 2 shards * 8 = 15.0
     expect(await wallet.getBalance()).to.be.equal("16000000000000000000");
+  });
+
+  it("rewardMiner with 0.5 dcf/s with put", async function () {
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    let wallet = new ethers.Wallet("0x123456", owner.provider);
+
+    const SystemContract = await ethers.getContractFactory("TestSystemContract");
+    const sc = await SystemContract.deploy(32);
+    await sc.deployed();
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
+    const kv = await MinabledKV.deploy(
+      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      5,
+      "1000000000000000000", // for all
+      "170141183460469231731687303715884105728", // 0.5
+      formatB32Str("genesis")
+    );
+    await kv.deployed();
+
+    // Total should be 1.0 * 2 shards * 8
+    await kv.sendValue({ value: ethers.utils.parseEther("16.0") });
+
+    await kv.rewardMiner(0, 4, wallet.address, 6, [10, 10], padLeft32("0x"));
+    // time 5 will have 0.5 * 2 shards * 8 = 8
+    expect(await wallet.getBalance()).to.be.equal("8000000000000000000");
+
+    // Put 4 elements
+    for (let i = 0; i < 4; i++) {
+      await kv.put(ethers.utils.formatBytes32String(i.toString()), ethers.utils.hexlify(i), {
+        value: "1000000000000000000",
+      });
+    }
+
+    await kv.rewardMiner(0, 4, wallet.address, 7, [10, 10], padLeft32("0x"));
+    // time 5 will have (0.5 + 0.25) * 2 shards * 8 = 12
+    expect(await wallet.getBalance()).to.be.equal("12000000000000000000");
+
+    // Put 3 elements
+    for (let i = 4; i < 7; i++) {
+      await kv.put(ethers.utils.formatBytes32String(i.toString()), ethers.utils.hexlify(i), {
+        value: "1000000000000000000",
+      });
+    }
+
+    await kv.rewardMiner(0, 4, wallet.address, 8, [10, 10], padLeft32("0x"));
+    // time 5 will have (0.5 + 0.25 + 0.125) * 2 shards * 8 = 14
+    expect(await wallet.getBalance()).to.be.equal("14000000000000000000");
+
+    await kv.setTimestamp(8);
+    // Put 1 element, this will create a new shard at time 8
+    for (let i = 7; i < 8; i++) {
+      await kv.put(ethers.utils.formatBytes32String(i.toString()), ethers.utils.hexlify(i), {
+        value: "1000000000000000000",
+      });
+    }
+
+    await kv.rewardMiner(0, 4, wallet.address, 9, [10, 10, 10], padLeft32("0x"));
+    // time 5 will have (0.5 + 0.25 + 0.125 + 0.0625) * 2 shards * 8 + 0.0625 * 8 = 15.5
+    expect(await wallet.getBalance()).to.be.equal("15500000000000000000");
+
+    await kv.rewardMiner(0, 4, wallet.address, 10, [10, 10, 10], padLeft32("0x"));
+    // time 5 will have (0.5 + 0.25 + 0.125 + 0.0625 + 0.03125) * 2 shards * 8 + (0.0625 + 0.03125) * 8 = 16.25
+    expect(await wallet.getBalance()).to.be.equal("16250000000000000000");
+
+    // Remove 1 element, this will remove the new shard at time 10
+    await kv.remove(ethers.utils.formatBytes32String("7"));
+
+    await kv.rewardMiner(0, 4, wallet.address, 11, [10, 10, 10], padLeft32("0x"));
+    // time 5 will have (0.5 + 0.25 + 0.125 + 0.0625 + 0.03125) * 2 shards * 8 + (prevous) = 16.5
+    expect(await wallet.getBalance()).to.be.equal("16500000000000000000");
   });
 
   it("rewardMiner with 0.5 dcf/s and dynamic shards", async function () {

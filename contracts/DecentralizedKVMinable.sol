@@ -200,10 +200,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
                 // Make a full shard payment.
                 MiningLib.MiningInfo storage info = infos[shardId];
                 totalReward += _paymentIn(storageCost << shardEntryBits, info.lastMineTime, minedTs);
-            }
 
-            // Update info.
-            MiningLib.update(infos[shardId], minedTs, diffs[i], hash0);
+                // Update mining info.
+                MiningLib.update(infos[shardId], minedTs, diffs[i], hash0);
+            }
         }
         uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
         uint256 minerReward = totalReward - coinbaseReward;
