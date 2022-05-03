@@ -111,6 +111,12 @@ contract DecentralizedKV {
         return kvMap[skey].kvSize;
     }
 
+    // Exist
+    function exist(bytes32 key) public view returns (bool) {
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        return kvMap[skey].hash != 0;
+    }
+
     // Return the keyed data given off and len.  This function can be only called in JSON-RPC context.
     function get(
         bytes32 key,
@@ -134,8 +140,7 @@ contract DecentralizedKV {
         return storageManager.getRaw(paddr.kvIdx, off, len);
     }
 
-    // Remove an existing KV pair.  Refund the cost accordingly.
-    function remove(bytes32 key) public {
+    function removeTo(bytes32 key, address to) public {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
         uint40 kvIdx = paddr.kvIdx;
@@ -154,7 +159,12 @@ contract DecentralizedKV {
         idxMap[lastKvIdx] = 0x0;
         lastKvIdx = lastKvIdx - 1;
 
-        payable(msg.sender).transfer(upfrontPayment());
+        payable(to).transfer(upfrontPayment());
+    }
+
+    // Remove an existing KV pair.  Refund the cost accordingly.
+    function remove(bytes32 key) public {
+        removeTo(key, msg.sender);
     }
 
     // Verify if the value matches a keyed value.

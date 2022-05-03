@@ -5,7 +5,7 @@ const { ethers } = require("hardhat");
 var ToBig = (x) => ethers.BigNumber.from(x);
 
 describe("DecentralizedKV Test", function () {
-  it("put/get", async function () {
+  it("put/get/remove", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
     const sm = await StorageManager.deploy();
     await sm.deployed();
@@ -19,9 +19,16 @@ describe("DecentralizedKV Test", function () {
     );
     expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 1, 2)).to.equal("0x2233");
     expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 2, 3)).to.equal("0x3344");
+
+    await kv.remove("0x0000000000000000000000000000000000000000000000000000000000000001");
+    expect(await kv.exist("0x0000000000000000000000000000000000000000000000000000000000000001")).to.equal(false);
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
   });
 
-  it("put with payment", async function () {
+  it("put/remove with payment", async function () {
+    const [addr0] = await ethers.getSigners();
+    let wallet = ethers.Wallet.createRandom().connect(addr0.provider);
+
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
     const sm = await StorageManager.deploy();
     await sm.deployed();
@@ -51,15 +58,20 @@ describe("DecentralizedKV Test", function () {
 
     await kv.setTimestamp(1);
     expect(await kv.upfrontPayment()).to.equal("500000000000000000");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000002", "0x33445566", {
       value: ethers.utils.parseEther("0.5"),
     });
 
     await kv.setTimestamp(4);
     expect(await kv.upfrontPayment()).to.equal("62500000000000000");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000003", "0x778899", {
       value: ethers.utils.parseEther("0.0625"),
     });
+
+    await kv.removeTo("0x0000000000000000000000000000000000000000000000000000000000000001", wallet.address);
+    expect(await wallet.getBalance()).to.equal(ethers.utils.parseEther("0.0625"));
+    expect(await kv.exist("0x0000000000000000000000000000000000000000000000000000000000000001")).to.equal(false);
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
   });
 
   it("put with payment and yearly 0.9 dcf", async function () {
