@@ -195,22 +195,21 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
-            MiningLib.MiningInfo storage info = infos[shardId];
-            if (i + startShardId <= lastPayableShardIdx) {
+
+            if (shardId <= lastPayableShardIdx) {
                 // Make a full shard payment.
+                MiningLib.MiningInfo storage info = infos[shardId];
                 totalReward += _paymentIn(storageCost << shardEntryBits, info.lastMineTime, minedTs);
             }
+
+            // Update info.
+            MiningLib.update(infos[shardId], minedTs, diffs[i], hash0);
         }
         uint256 coinbaseReward = (totalReward * coinbaseShare) / 10000;
         uint256 minerReward = totalReward - coinbaseReward;
         // TODO: avoid reentrancy attack
         payable(block.coinbase).transfer(coinbaseReward);
         payable(miner).transfer(minerReward);
-
-        // Update info.
-        for (uint256 i = 0; i < shardLen; i++) {
-            MiningLib.update(infos[startShardId + i], minedTs, diffs[i], hash0);
-        }
     }
 
     function _mine(
