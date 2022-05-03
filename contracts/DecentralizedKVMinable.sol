@@ -181,6 +181,10 @@ contract DecentralizedKVMinable is DecentralizedKV {
         }
     }
 
+    function lastMinableShardIdx() public view returns (uint256) {
+        return (lastKvIdx >> shardEntryBits) + 1;
+    }
+
     function _rewardMiner(
         uint256 startShardId,
         uint256 shardLen,
@@ -192,7 +196,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         // Mining is successful.
         // Send reward to coinbase and miner.
         uint256 totalReward = 0;
-        uint256 lastPayableShardIdx = (lastKvIdx >> shardEntryBits) + 1;
+        uint256 lastPayableShardIdx = lastMinableShardIdx();
         for (uint256 i = 0; i < shardLen; i++) {
             uint256 shardId = startShardId + i;
 
