@@ -4,11 +4,19 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 
 contract TestMerkleLib {
-    function merkleRoot(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public pure returns (bytes32) {
+    function merkleRoot(
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 nChunkBits
+    ) public pure returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
-    function merkleRootNoView(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public returns (bytes32) {
+    function merkleRootNoView(
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 nChunkBits
+    ) public returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
@@ -16,11 +24,22 @@ contract TestMerkleLib {
         return keccak256(data);
     }
 
-    function verify(bytes memory chunkData, uint256 chunkIdx, uint256 nChunkBits, bytes32 root, bytes32[] memory proofs) public pure returns (bool) {
+    function verify(
+        bytes memory chunkData,
+        uint256 chunkIdx,
+        uint256 nChunkBits,
+        bytes32 root,
+        bytes32[] memory proofs
+    ) public pure returns (bool) {
         return MerkleLib.verify(keccak256(chunkData), chunkIdx, nChunkBits, root, proofs);
     }
 
-    function getProof(bytes memory data, uint256 chunkSize, uint256 nChunkBits, uint256 chunkIdx) public pure returns (bytes32[] memory) {
+    function getProof(
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 nChunkBits,
+        uint256 chunkIdx
+    ) public pure returns (bytes32[] memory) {
         return MerkleLib.getProof(data, chunkSize, nChunkBits, chunkIdx);
     }
 }

@@ -3,7 +3,11 @@ pragma solidity ^0.8.0;
 
 library MerkleLib {
     // Calculate the Merkle root of a given data with chunk size and number of maximum chunks in the data limit.
-    function merkleRoot(bytes memory data, uint256 chunkSize, uint256 nChunkBits) internal pure returns (bytes32) {
+    function merkleRoot(
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 nChunkBits
+    ) internal pure returns (bytes32) {
         uint256 nChunks = 1 << nChunkBits;
         bytes32[] memory nodes = new bytes32[](nChunks);
         for (uint256 i = 0; i < nChunks; i++) {
@@ -34,9 +38,15 @@ library MerkleLib {
     }
 
     // Verify the if the hash of a chunk data is in the chunks
-    function verify(bytes32 dataHash, uint256 chunkIdx, uint256 nChunkBits, bytes32 root, bytes32[] memory proofs) internal pure returns (bool) {
+    function verify(
+        bytes32 dataHash,
+        uint256 chunkIdx,
+        uint256 nChunkBits,
+        bytes32 root,
+        bytes32[] memory proofs
+    ) internal pure returns (bool) {
         bytes32 hash = dataHash;
-        for (uint256 i = 0; i < nChunkBits; i ++) {
+        for (uint256 i = 0; i < nChunkBits; i++) {
             if (chunkIdx % 2 == 0) {
                 hash = keccak256(abi.encode(hash, proofs[i]));
             } else {
@@ -47,7 +57,12 @@ library MerkleLib {
         return hash == root;
     }
 
-    function getProof(bytes memory data, uint256 chunkSize, uint256 nChunkBits, uint256 chunkIdx) internal pure returns (bytes32[] memory) {
+    function getProof(
+        bytes memory data,
+        uint256 chunkSize,
+        uint256 nChunkBits,
+        uint256 chunkIdx
+    ) internal pure returns (bytes32[] memory) {
         uint256 nChunks = 1 << nChunkBits;
         bytes32[] memory nodes = new bytes32[](nChunks);
         for (uint256 i = 0; i < nChunks; i++) {
@@ -70,7 +85,7 @@ library MerkleLib {
         uint256 proofIdx = 0;
         bytes32[] memory proofs = new bytes32[](nChunkBits);
         while (n != 1) {
-            proofs[proofIdx] = nodes[(chunkIdx / 2) * 2 + 1 - chunkIdx % 2];
+            proofs[proofIdx] = nodes[(chunkIdx / 2) * 2 + 1 - (chunkIdx % 2)];
             for (uint256 i = 0; i < n / 2; i++) {
                 nodes[i] = keccak256(abi.encode(nodes[i * 2], nodes[i * 2 + 1]));
             }
