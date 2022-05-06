@@ -114,6 +114,25 @@ contract DecentralizedKVMinable is DecentralizedKV {
         }
     }
 
+    function _xorData(bytes memory data0, bytes memory data1) internal pure {
+        require(data0.length == data1.length, "xor length mismatch");
+        require(data0.length % 32 == 0, "xor length not 32n");
+        uint256 dataPtr0;
+        uint256 dataPtr1;
+        assembly {
+            dataPtr0 := add(data0, 0x20)
+            dataPtr1 := add(data1, 0x20)
+        }
+        uint256 dataPtrEnd = dataPtr0 + data0.length;
+        while (dataPtr0 < dataPtrEnd) {
+            assembly {
+                mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+            }
+            dataPtr0 = dataPtr0 + 32;
+            dataPtr1 = dataPtr1 + 32;
+        }
+    }
+
     function _checkProofOfRandomAccess(
         uint256 startShardId,
         uint256 shardLenBits,
@@ -128,6 +147,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
         );
         bytes32[] memory dataHashes = systemContract.maskedDataHashes(kvIdxs, kvSizes, maskedData);
         uint256 matched = 0;
+
+        bytes memory mixedData = new bytes(maxKvSize);
 
         for (uint256 i = 0; i < maskedData.length; i++) {
             require(maskedData[i].length == maxKvSize, "masked data len wrong");
@@ -146,11 +167,11 @@ contract DecentralizedKVMinable is DecentralizedKV {
                 }
             }
 
-            hash0 = keccak256(abi.encode(hash0, maskedData[i]));
+            _xorData(mixedData, maskedData[i]);
         }
         // We allow some mismatches if the data happens to be removed/modified.
         require(matched >= randomChecks, "insufficient PoRA");
-        return hash0;
+        return keccak256(abi.encode(hash0, mixedData));
     }
 
     // Aggregate the difficulties from multiple shards.
