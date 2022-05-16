@@ -25,6 +25,34 @@ describe("DecentralizedKV Test", function () {
     expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
   });
 
+  it("put/get with replacement", async function () {
+    const StorageManager = await ethers.getContractFactory("TestStorageManager");
+    const sm = await StorageManager.deploy();
+    await sm.deployed();
+    const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
+    const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
+    await kv.deployed();
+
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344");
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+      "0x11223344"
+    );
+
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x772233445566");
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+      "0x77223344"
+    );
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 6)).to.equal(
+      "0x772233445566"
+    );
+
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x8899");
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x8899");
+
+    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x");
+    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
+  });
+
   it("put/remove with payment", async function () {
     const [addr0] = await ethers.getSigners();
     let wallet = ethers.Wallet.createRandom().connect(addr0.provider);

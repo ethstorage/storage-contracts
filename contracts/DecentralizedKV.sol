@@ -95,10 +95,10 @@ contract DecentralizedKV {
             // append (require payment from sender)
             require(msg.value >= upfrontPayment(), "not enough payment");
             paddr.kvIdx = lastKvIdx;
-            paddr.kvSize = uint24(data.length);
             idxMap[paddr.kvIdx] = skey;
             lastKvIdx = lastKvIdx + 1;
         }
+        paddr.kvSize = uint24(data.length);
         paddr.hash = bytes24(keccak256(data));
         kvMap[skey] = paddr;
 
