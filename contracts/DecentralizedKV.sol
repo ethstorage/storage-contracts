@@ -102,7 +102,13 @@ contract DecentralizedKV {
         paddr.hash = bytes24(keccak256(data));
         kvMap[skey] = paddr;
 
-        storageManager.putRaw(paddr.kvIdx, data);
+        // Weird that cannot call precompiled contract like this (solidity issue?)
+        // storageManager.putRaw(paddr.kvIdx, data);
+        // Use call directly instead.
+        (bool success, ) = address(storageManager).call(
+            abi.encodeWithSelector(IStorageManager.putRaw.selector, paddr.kvIdx, data)
+        );
+        require(success, "failed to putRaw");
     }
 
     // Return the size of the keyed value
@@ -137,7 +143,14 @@ contract DecentralizedKV {
             len = paddr.kvSize - off;
         }
 
-        return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
+        // Weird that we cannot call a precompile contract like this (solidity issue?).
+        // return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
+        // Use staticcall directly instead.
+        (bool success, bytes memory data) = address(storageManager).staticcall(
+            abi.encodeWithSelector(IStorageManager.getRaw.selector, paddr.hash, paddr.kvIdx, off, len)
+        );
+        require(success, "failed to getRaw");
+        return abi.decode(data, (bytes));
     }
 
     // Remove an existing KV pair to a recipient.  Refund the cost accordingly.
