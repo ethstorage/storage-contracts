@@ -40,3 +40,24 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
         }
     }
 }
+
+contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContractDaggerHashimoto {
+    uint256 immutable maxKvSize;
+
+    constructor(uint256 _maxKvSize) {
+        maxKvSize = _maxKvSize;
+    }
+
+    function checkDaggerData(
+        uint256 kvIdx,
+        bytes32 kvHash,
+        bytes memory maskedData
+    ) public view override returns (bool) {
+        uint256 v;
+        uint256 off = maskedData.length; // min size is 32
+        assembly {
+            v := mload(add(maskedData, off))
+        }
+        return v == kvIdx;
+    }
+}

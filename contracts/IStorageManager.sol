@@ -24,6 +24,7 @@ interface IMiningHash {
     // Return the masked hash of data.
     // Only return hash of [0, len) bytes after unmasking, assuming the rest bytes are zeros.
     // Return 0x0 if the rest unmasked data have non-zero bytes.
+    // Use batched method that allow concurrent computation.
     function maskedDataHashes(
         uint256[] memory kvIdxs,
         uint256[] memory kvSizes,
@@ -31,4 +32,15 @@ interface IMiningHash {
     ) external view returns (bytes32[] memory);
 }
 
+interface IDaggerHash {
+    // Return if the maskedData matches underlying data
+    function checkDaggerData(
+        uint256 kvIdx,
+        bytes32 kvHash,
+        bytes memory maskedData
+    ) external view returns (bool);
+}
+
 interface ISystemContract is IStorageManager, IMiningHash {}
+
+interface ISystemContractDaggerHashimoto is IStorageManager, IDaggerHash {}
