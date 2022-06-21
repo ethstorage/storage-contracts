@@ -53,11 +53,7 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         bytes32 kvHash,
         bytes memory maskedData
     ) public view override returns (bool) {
-        uint256 v;
-        uint256 off = maskedData.length; // min size is 32
-        assembly {
-            v := mload(add(maskedData, off))
-        }
-        return v == kvIdx;
+        bytes32 dataHash = keccak256(maskedData);
+        return bytes24(dataHash) == bytes24(kvHash);
     }
 }
