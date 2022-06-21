@@ -95,9 +95,9 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         while (dataPtr0 < dataPtrEnd) {
             assembly {
                 mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+                dataPtr0 := add(dataPtr0, 32)
+                dataPtr1 := add(dataPtr1, 32)
             }
-            dataPtr0 = dataPtr0 + 32;
-            dataPtr1 = dataPtr1 + 32;
         }
     }
 
@@ -125,7 +125,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
          * lookupTableBytes: 4096 vs 64
          * use XOR with random position of mix data intead of FNV with fixed mix positions for faster speed
          */
-        require(maskedData.length == randomChecks, "insufficient PoRA");
+        require(maskedData.length == randomChecks, "incorrect PoRA");
         uint256 maxKvSize = 1 << maxKvSizeBits;
         bytes memory mix = new bytes(maxKvSize);
         for (uint256 j = 32; j <= maxKvSize; j += 32) {
