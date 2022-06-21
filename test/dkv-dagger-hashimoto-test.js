@@ -119,6 +119,7 @@ describe("Basic Func Test", function () {
       dataList[21],
       dataList[11],
     ]);
+    expect(r0).to.equal("0xdc5ed7906841c9936f16b4fcb44e4320516d32a2c94b0166197ea021a6150a05");
 
     // await kv.hashimotoNonView(0, 0, h0, [
     //     dataList[10],

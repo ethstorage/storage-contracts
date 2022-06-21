@@ -68,7 +68,7 @@ def test_large():
         data_list.append(data)
 
     h0 = bytes.fromhex('2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5')
-    hashimoto(0, 4096, shard_size_bits, 0, 16, h0, data_list, full_data_list=True)
+    print(hashimoto(0, 4096, shard_size_bits, 0, 16, h0, data_list, full_data_list=True).hex())
 
 h0 = bytes.fromhex('2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5')
 

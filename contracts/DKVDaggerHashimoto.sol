@@ -101,6 +101,32 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         }
     }
 
+    function _xorData4(bytes memory data0, bytes memory data1) internal pure {
+        uint256 dataPtr0;
+        uint256 dataPtr1;
+        assembly {
+            dataPtr0 := add(data0, 0x20)
+            dataPtr1 := add(data1, 0x20)
+        }
+        uint256 dataPtrEnd = dataPtr0 + data0.length;
+        while (dataPtr0 < dataPtrEnd) {
+            assembly {
+                mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+                dataPtr0 := add(dataPtr0, 32)
+                dataPtr1 := add(dataPtr1, 32)
+                mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+                dataPtr0 := add(dataPtr0, 32)
+                dataPtr1 := add(dataPtr1, 32)
+                mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+                dataPtr0 := add(dataPtr0, 32)
+                dataPtr1 := add(dataPtr1, 32)
+                mstore(dataPtr0, xor(mload(dataPtr0), mload(dataPtr1)))
+                dataPtr0 := add(dataPtr0, 32)
+                dataPtr1 := add(dataPtr1, 32)
+            }
+        }
+    }
+
     function _fnv256(uint256 a, uint256 b) internal pure returns (uint256) {
         unchecked {
             return (a * 0x0000000000000000000001000000000000000000000000000000000000000163) ^ b;
@@ -157,7 +183,11 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             mixOff = (mixData >> (shardEntryBits + shardLenBits)) % (maxKvSize - 32);
 
             // Xor access data (instead of fnv for faster speed)
-            _xorData(mix, data);
+            if ((maxKvSize % 128) == 0) {
+                _xorData4(mix, data);
+            } else {
+                _xorData(mix, data);
+            }
         }
         return keccak256(mix);
     }
