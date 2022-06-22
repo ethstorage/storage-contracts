@@ -30,12 +30,14 @@ contract TestDaggerHashPrecompile {
 
 contract TestKVWithDaggerHash is TestDecentralizedKV {
     address daggerHashAddr;
+    ISystemContractDaggerHashimoto sysContract;
 
     constructor(
-        IStorageManager _storageManager,
+        ISystemContractDaggerHashimoto _storageManager,
         uint256 _maxKvSize,
         address _daggerHashAddr
     ) TestDecentralizedKV(_storageManager, _maxKvSize, 0, 0, 0) {
+        sysContract = _storageManager;
         daggerHashAddr = _daggerHashAddr;
     }
 
@@ -48,5 +50,40 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
             paddrValue := sload(paddr.slot)
         }
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
+    }
+
+    // Gas report
+    function checkDaggerHashNonView(bytes32 key, bytes memory maskedData) public returns (bool) {
+        // Obtain the value of the physical address directly from storage slot.
+        uint256 paddrValue;
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr storage paddr = kvMap[skey];
+        assembly {
+            paddrValue := sload(paddr.slot)
+        }
+        return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
+    }
+
+    // Gas report
+    function checkDaggerHashDirectNonView(bytes32 key, bytes memory maskedData) public returns (bool) {
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr memory paddr = kvMap[skey];
+
+        return paddr.hash == bytes24(keccak256(maskedData));
+    }
+
+    function checkDaggerHashNormal(bytes32 key, bytes memory maskedData) public view returns (bool) {
+        // Obtain the value of the physical address directly from storage slot.
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr memory paddr = kvMap[skey];
+        return sysContract.checkDaggerData(paddr.kvIdx, paddr.hash, maskedData);
+    }
+
+    // Gas report
+    function checkDaggerHashNormalNonView(bytes32 key, bytes memory maskedData) public returns (bool) {
+        // Obtain the value of the physical address directly from storage slot.
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr memory paddr = kvMap[skey];
+        return sysContract.checkDaggerData(paddr.kvIdx, paddr.hash, maskedData);
     }
 }

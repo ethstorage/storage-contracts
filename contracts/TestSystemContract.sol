@@ -42,12 +42,6 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
 }
 
 contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContractDaggerHashimoto {
-    uint256 immutable maxKvSize;
-
-    constructor(uint256 _maxKvSize) {
-        maxKvSize = _maxKvSize;
-    }
-
     function checkDaggerData(
         uint256 kvIdx,
         bytes32 kvHash,

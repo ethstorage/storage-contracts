@@ -27,8 +27,8 @@ library DaggerHashCaller {
                 maskedData, // inputs are stored at location x
                 add(tmp, 0x20), // inputs len
                 maskedData, // store output over input (saves space)
-                0x20
-            ) // outputs are 32 bytes long
+                0x20 // outputs are 32 bytes long
+            )
 
             result := mload(maskedData) // load bytes32 return
             mstore(maskedData, tmp) // recover the data length
