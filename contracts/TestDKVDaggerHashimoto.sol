@@ -53,6 +53,15 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         return _hashimoto(startShardId, shardLenBits, hash0, maskedData);
     }
 
+    function hashimotoKeccak256NonView(
+        uint256 startShardId,
+        uint256 shardLenBits,
+        bytes32 hash0,
+        bytes[] memory maskedData
+    ) public returns (bytes32) {
+        return _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
+    }
+
     function calculateDiffAndInitHash(
         uint256 startShardId,
         uint256 shardLen,

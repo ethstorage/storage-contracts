@@ -12,7 +12,7 @@ var keccak256 = (x) => ethers.utils.keccak256(x);
 describe("Basic Func Test", function () {
   it("hashimoto-tiny", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy();
 
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 1 random access
@@ -42,7 +42,7 @@ describe("Basic Func Test", function () {
 
   it("hashimoto-small", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy();
 
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 2 random access
@@ -75,7 +75,7 @@ describe("Basic Func Test", function () {
 
   it("hashimoto-large", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy();
 
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 4096 bytes per data, 32 entries in shard, 16 random access
@@ -139,5 +139,54 @@ describe("Basic Func Test", function () {
     // dataList[21],
     // dataList[11],
     // ]);
+  });
+
+  it("hashimoto-large-keccak", async function () {
+    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+    const sc = await SystemContract.deploy();
+
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+    // 4096 bytes per data, 32 entries in shard, 16 random access
+    const kv = await MinabledKV.deploy(
+      [12, 17, 3, 0, 60, 40, 1024, 0, sc.address],
+      0,
+      0,
+      0,
+      ethers.utils.formatBytes32String("")
+    );
+    await kv.deployed();
+
+    let l = 0;
+    let dataList = [];
+    for (let i = 0; i < 32; i++) {
+      let d = "0x";
+      for (let j = 0; j < 4096 / 32; j++) {
+        d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(l))]);
+        l = l + 1;
+      }
+      dataList.push(d);
+      await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
+    }
+
+    let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
+
+    await kv.hashimotoKeccak256NonView(0, 0, h0, [
+      dataList[21],
+      dataList[7],
+      dataList[31],
+      // dataList[24],
+      // dataList[29],
+      // dataList[7],
+      // dataList[12],
+      // dataList[4],
+      // dataList[1],
+      // dataList[30],
+      // dataList[31],
+      // dataList[16],
+      // dataList[5],
+      // dataList[19],
+      // dataList[30],
+      // dataList[13],
+    ]);
   });
 });

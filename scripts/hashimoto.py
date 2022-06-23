@@ -51,6 +51,33 @@ def hashimoto(shard_id, data_size, shard_size_bits, nshard_bits, naccess, h0, da
         mix_off = (mix_data >> (shard_size_bits + nshard_bits)) % (data_size - 32)
     
     return keccak256(mix)
+
+def hashimoto_keccak256(shard_id, data_size, shard_size_bits, nshard_bits, naccess, h0, data_list, idx_list=None, full_data_list=False):
+    shard_size = 1 << shard_size_bits
+    entries = 1 << (shard_size_bits + nshard_bits)
+    for data in data_list:
+        assert len(data) == data_size
+
+    assert data_size % len(h0) == 0
+
+    h = h0
+    for i in range(naccess):
+        hvalue = int.from_bytes(h, byteorder='big')
+
+        parent = hvalue % entries
+        kv_idx = parent + shard_id * shard_size
+        if idx_list != None:
+            assert idx_list[i] == kv_idx
+
+        if full_data_list:
+            data = data_list[kv_idx]
+        else:
+            data = data_list[i]
+
+        h = keccak256(h + data)
+        print("i: {}, parent: {}, kv_idx: {}, hash: {}".format(i, parent, kv_idx, h.hex()))
+    
+    return h
     
 
 def test_large():
@@ -70,6 +97,23 @@ def test_large():
     h0 = bytes.fromhex('2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5')
     print(hashimoto(0, 4096, shard_size_bits, 0, 16, h0, data_list, full_data_list=True).hex())
 
+def test_large_keccak256():
+    shard_size_bits = 5 # 32
+    data_size = 4096
+
+    data_list = []
+
+    l = 0
+    for i in range(1 << shard_size_bits):
+        data = b''
+        for j in range(data_size // 32):
+            data = data + keccak256(l.to_bytes(length=4, byteorder='big'))
+            l += 1
+        data_list.append(data)
+
+    h0 = bytes.fromhex('2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5')
+    print(hashimoto_keccak256(0, 4096, shard_size_bits, 0, 16, h0, data_list, full_data_list=True).hex())
+
 h0 = bytes.fromhex('2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5')
 
 print(hashimoto(0, 64, 2, 0, 1, h0, [bytes64(2)], [2]).hex())
@@ -79,3 +123,4 @@ print(hashimoto(0, 64, 2, 2, 2, h0, [bytes64(10), bytes64(0)], None).hex())
 print(hashimoto(1, 64, 2, 1, 2, h0, [bytes64(10), bytes64(9)], None).hex())
 
 test_large()
+test_large_keccak256()

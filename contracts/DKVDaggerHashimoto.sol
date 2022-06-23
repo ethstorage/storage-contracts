@@ -192,6 +192,35 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         return keccak256(mix);
     }
 
+    /*
+     * Run a modified hashimoto hash.
+     */
+    function _hashimotoKeccak256(
+        uint256 startShardId,
+        uint256 shardLenBits,
+        bytes32 hash0,
+        bytes[] memory maskedData
+    ) internal view returns (bytes32) {
+        require(maskedData.length == randomChecks, "incorrect PoRA");
+        uint256 maxKvSize = 1 << maxKvSizeBits;
+        uint256 rows = 1 << (shardEntryBits + shardLenBits);
+
+        for (uint256 i = 0; i < randomChecks; i++) {
+            require(maskedData[i].length == maxKvSize, "invalid proof size");
+            uint256 parent = uint256(hash0) % rows;
+            uint256 kvIdx = parent + (startShardId << shardEntryBits);
+            bytes memory data = maskedData[i];
+            require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+
+            assembly {
+                mstore(data, hash0)
+                hash0 := keccak256(data, add(maxKvSize, 0x20))
+                mstore(data, maxKvSize)
+            }
+        }
+        return hash0;
+    }
+
     // Aggregate the difficulties from multiple shards.
     function _calculateDiffAndInitHash(
         uint256 startShardId,
