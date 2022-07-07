@@ -26,7 +26,7 @@ hash512 = sha512
 
 def generate_cache(cache_size, seed):
     cache = [hash512(seed)]
-    for _ in range(cache_size // HASH_BYTES):
+    for _ in range(1, cache_size // HASH_BYTES):
         cache.append(hash512(cache[-1]))
 
     rows = len(cache)
