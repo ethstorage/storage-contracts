@@ -4,8 +4,10 @@
 
 #define HASH_BYTES 64
 #define WORD_BYTES 8
+#define WORDS_PER_HASH 8
 #define CACHE_ROUND 3
 #define CACHE_ITEM(cache, idx) ((cache) + (idx) * HASH_BYTES)
+#define DATASET_PARENTS 256
 
 unsigned char *generate_cache(uint64_t cache_size, unsigned char *seed, uint64_t seed_size) {
     unsigned char *cache = malloc(cache_size);
@@ -39,7 +41,58 @@ unsigned char *generate_cache(uint64_t cache_size, unsigned char *seed, uint64_t
     return (cache);
 }
 
-int main(int argc, char *argv[]) {
+uint64_t fnv64(uint64_t a, uint64_t b) {
+    return ((a * 0x00000100000001B3)) ^ b;
+}
+
+void calculate_dataset_item(unsigned char *cache, uint64_t cache_size, uint64_t i, unsigned char* dataset) {
+    uint64_t rows = cache_size / HASH_BYTES;
+
+    uint64_t *cache_u64 = (uint64_t *)cache;
+    uint64_t *mix = (uint64_t *)dataset;
+    mix[0] = cache_u64[(i % rows) * WORDS_PER_HASH] ^ i;
+    for (uint64_t j = 1; j < WORDS_PER_HASH; j++) {
+        mix[j] = cache_u64[(i % rows) * WORDS_PER_HASH + j];
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+
+    for (uint64_t j = 0; j < DATASET_PARENTS; j++) {
+        uint64_t cache_idx = fnv64(i ^ j, mix[j % WORDS_PER_HASH]) % rows;
+        for (uint64_t k = 0; k < WORDS_PER_HASH; k++) {
+            mix[k] = fnv64(mix[k], cache_u64[cache_idx * WORDS_PER_HASH + k]);
+        }
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+    return;
+}
+
+void simple_verify() {
+    unsigned char seed[] = "123";
+
+    unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
+
+    uint64_t *cache_u64 = (uint64_t *)cache;
+    for (int i = 0; i < 1024 / WORD_BYTES; i++) {
+        printf("%llu ", cache_u64[i]);
+    }
+    printf("\n");
+
+    unsigned char *data = malloc(HASH_BYTES);
+
+    calculate_dataset_item(cache, 1024, 123, data);
+    for (int i = 0; i < 64; i++) {
+        printf("%x", data[i]);
+    }
+    printf("\n");
+
+    return;
+}
+
+void hash_empty_verify() {
     unsigned char *digest = malloc(64);
     SHA512(0, 0, digest);
     for (int i = 0; i < 64; i++) {
@@ -47,17 +100,32 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
+    return (0);
+}
+
+void benchmark() {
     unsigned char seed[] = "123";
 
     unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
+
     uint64_t *cache_u64 = (uint64_t *)cache;
-    
     for (int i = 0; i < 1024 / WORD_BYTES; i++) {
         printf("%llu ", cache_u64[i]);
     }
     printf("\n");
 
-    return (0);
+    unsigned char *data = malloc(HASH_BYTES);
+
+    calculate_dataset_item(cache, 1024, 123, data);
+    for (int i = 0; i < 64; i++) {
+        printf("%x", data[i]);
+    }
+    printf("\n");
+
+    return;
+}
+
+int main(int argc, char *argv[]) {
 }
 
 

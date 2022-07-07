@@ -9,7 +9,7 @@ WORD_BYTES = 8 # bytes per word (64 bits)
 WORDS_PER_HASH = 8
 CACHE_ROUNDS = 3
 DATASET_PARENTS = 256
-WORD_MASK = (2 ** WORD_BYTES) - 1
+WORD_MASK = (2 ** (WORD_BYTES * 8)) - 1
 
 def keccak512(bs):
     k = keccak.new(digest_bits=512)
@@ -61,19 +61,19 @@ def hash_to_words(hash):
 def calc_dataset_item(cache_u64, i: int):
     rows = len(cache_u64) // WORDS_PER_HASH
     # initialize the mix
-    mix = [cache_u64[(i % rows) * WORD_BYTES] ^ i]
+    mix = [cache_u64[(i % rows) * WORDS_PER_HASH] ^ i]
     for j in range(1, HASH_BYTES // WORD_BYTES):
-        mix.append(cache_u64[(j % rows) * WORD_BYTES + j])
+        mix.append(cache_u64[(i % rows) * WORDS_PER_HASH + j])
 
     mix = hash_to_words(hash512(words_to_hash(mix)))
 
     # fnv it with a lot of random cache nodes based on i
     for j in range(DATASET_PARENTS):
         cache_index = fnv64(i ^ j, mix[j % WORDS_PER_HASH]) % rows
-        mix = list(map(fnv64, mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH]))
+        mix = [fnv64(x, y) for x, y in zip(mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
     return hash512(words_to_hash(mix))
 
 
 cache_u64 = to_cache_u64(generate_cache(1024, b'123'))
 print(cache_u64)
-calc_dataset_item(cache_u64, 123)
+print(calc_dataset_item(cache_u64, 123).hex())
