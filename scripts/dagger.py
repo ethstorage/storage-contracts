@@ -1,7 +1,8 @@
 # A dagger algorithm with 64 bit dataset
 # (that is friendly to CPU but not GPU for 32 bits)
 
-from Crypto.Hash import keccak 
+from Crypto.Hash import keccak
+import hashlib
 
 HASH_BYTES = 64 # bytes per hash (512 bits)
 WORD_BYTES = 8 # bytes per word (64 bits)
@@ -15,16 +16,24 @@ def keccak512(bs):
     k.update(bs)
     return k.digest()
 
+def sha512(bs):
+    k = hashlib.sha512()
+    k.update(bs)
+    return k.digest()
+
+# hash512 = keccak512
+hash512 = sha512
+
 def generate_cache(cache_size, seed):
-    cache = [keccak512(seed)]
+    cache = [hash512(seed)]
     for _ in range(cache_size // HASH_BYTES):
-        cache.append(keccak512(cache[-1]))
+        cache.append(hash512(cache[-1]))
 
     rows = len(cache)
     for _ in range(CACHE_ROUNDS):
         for i in range(rows):
             v = int.from_bytes(cache[i][0:4], byteorder="little") % rows
-            cache[i] = keccak512(bytes(a ^ b for a, b in zip(cache[v], cache[(i - 1 + rows) % rows])))
+            cache[i] = hash512(bytes(a ^ b for a, b in zip(cache[v], cache[(i - 1 + rows) % rows])))
     return cache
 
 def to_cache_u64(cache):
@@ -56,13 +65,13 @@ def calc_dataset_item(cache_u64, i: int):
     for j in range(1, HASH_BYTES // WORD_BYTES):
         mix.append(cache_u64[(j % rows) * WORD_BYTES + j])
 
-    mix = hash_to_words(keccak512(words_to_hash(mix)))
+    mix = hash_to_words(hash512(words_to_hash(mix)))
 
     # fnv it with a lot of random cache nodes based on i
     for j in range(DATASET_PARENTS):
         cache_index = fnv64(i ^ j, mix[j % WORDS_PER_HASH]) % rows
         mix = list(map(fnv64, mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH]))
-    return keccak512(words_to_hash(mix))
+    return hash512(words_to_hash(mix))
 
 
 cache_u64 = to_cache_u64(generate_cache(1024, b'123'))
