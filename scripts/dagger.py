@@ -5,8 +5,8 @@ from Crypto.Hash import keccak
 import hashlib
 
 HASH_BYTES = 64 # bytes per hash (512 bits)
-WORD_BYTES = 8 # bytes per word (64 bits)
-WORDS_PER_HASH = 8
+WORD_BYTES = 4 # bytes per word (64 bits)
+WORDS_PER_HASH = HASH_BYTES // WORD_BYTES
 CACHE_ROUNDS = 3
 DATASET_PARENTS = 256
 WORD_MASK = (2 ** (WORD_BYTES * 8)) - 1
@@ -36,15 +36,25 @@ def generate_cache(cache_size, seed):
             cache[i] = hash512(bytes(a ^ b for a, b in zip(cache[v], cache[(i - 1 + rows) % rows])))
     return cache
 
-def to_cache_u64(cache):
-    cache_u64 = []
+def to_cache_u(cache):
+    cache_u = []
     for i in range(len(cache)):
         for off in range(0, HASH_BYTES, WORD_BYTES):
-            cache_u64.append(int.from_bytes(cache[i][off:off+WORD_BYTES], byteorder="little"))
-    return cache_u64
+            cache_u.append(int.from_bytes(cache[i][off:off+WORD_BYTES], byteorder="little"))
+    return cache_u
+
+def fnv32(a, b):
+    return ((a * 0x01000193) & WORD_MASK) ^ b
 
 def fnv64(a, b):
     return ((a * 0x00000100000001B3) & WORD_MASK) ^ b
+
+if WORD_BYTES == 8:
+    fnv = fnv64
+elif WORD_BYTES == 4:
+    fnv = fnv32
+else:
+    assert(False)
 
 def words_to_hash(words):
     hash = b''
@@ -69,11 +79,11 @@ def calc_dataset_item(cache_u64, i: int):
 
     # fnv it with a lot of random cache nodes based on i
     for j in range(DATASET_PARENTS):
-        cache_index = fnv64(i ^ j, mix[j % WORDS_PER_HASH]) % rows
-        mix = [fnv64(x, y) for x, y in zip(mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
+        cache_index = fnv(i ^ j, mix[j % WORDS_PER_HASH]) % rows
+        mix = [fnv(x, y) for x, y in zip(mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
     return hash512(words_to_hash(mix))
 
 
-cache_u64 = to_cache_u64(generate_cache(1024, b'123'))
-print(cache_u64)
-print(calc_dataset_item(cache_u64, 123).hex())
+cache_u = to_cache_u(generate_cache(1024, b'123'))
+print(cache_u)
+print(calc_dataset_item(cache_u, 123).hex())
