@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 #include "sha512.c"
 
@@ -99,33 +100,45 @@ void hash_empty_verify() {
         printf("%x", digest[i]);
     }
     printf("\n");
-
-    return (0);
 }
 
 void benchmark() {
     unsigned char seed[] = "123";
+    struct timespec start, end;
 
-    unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
+    uint64_t cache_size = 83886080; // 80 MB
+    printf("Generating cache with size %llu\n", cache_size);
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    unsigned char *cache = generate_cache(cache_size, seed, sizeof(seed) - 1);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    printf("Done! Took %0.2fs\n", (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9);
 
-    uint64_t *cache_u64 = (uint64_t *)cache;
-    for (int i = 0; i < 1024 / WORD_BYTES; i++) {
-        printf("%llu ", cache_u64[i]);
-    }
-    printf("\n");
-
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char *data = malloc(HASH_BYTES);
+    uint64_t items = 100000;
+    for (uint64_t idx = 0; idx < items; idx ++) {
+        calculate_dataset_item(cache, cache_size, idx, data);
 
-    calculate_dataset_item(cache, 1024, 123, data);
-    for (int i = 0; i < 64; i++) {
-        printf("%x", data[i]);
+        if (idx % 10000 != 0) {
+            continue;
+        }
+
+        printf("item %llu, ", idx);
+        for (int i = 0; i < 64; i++) {
+            printf("%x", data[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double used_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Hash done! Took %0.2fs, rate %0.2f H/s\n", used_time, items / used_time);
 
     return;
 }
 
 int main(int argc, char *argv[]) {
+    benchmark();
+    return (0);
 }
 
 
