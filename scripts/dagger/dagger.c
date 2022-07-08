@@ -105,6 +105,7 @@ void hash_empty_verify() {
 void benchmark() {
     unsigned char seed[] = "123";
     struct timespec start, end;
+    struct timespec startb, endb;
 
     uint64_t cache_size = 83886080; // 80 MB
     printf("Generating cache with size %llu\n", cache_size);
@@ -114,6 +115,7 @@ void benchmark() {
     printf("Done! Took %0.2fs\n", (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9);
 
     clock_gettime(CLOCK_MONOTONIC, &start);
+    clock_gettime(CLOCK_MONOTONIC, &startb);
     unsigned char *data = malloc(HASH_BYTES);
     uint64_t items = 100000;
     for (uint64_t idx = 0; idx < items; idx ++) {
@@ -123,7 +125,11 @@ void benchmark() {
             continue;
         }
 
-        printf("item %llu, ", idx);
+        clock_gettime(CLOCK_MONOTONIC, &endb);
+        double used_time = (endb.tv_sec - startb.tv_sec) + (endb.tv_nsec - startb.tv_nsec) / 1e9;
+        startb = endb;
+
+        printf("rate %0.2f H/s, item %llu, ", 10000 / used_time, idx);
         for (int i = 0; i < 64; i++) {
             printf("%x", data[i]);
         }
