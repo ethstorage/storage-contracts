@@ -42,6 +42,7 @@ unsigned char *generate_cache(uint64_t cache_size, unsigned char *seed, uint64_t
     return (cache);
 }
 
+__attribute__((always_inline))
 uint64_t fnv64(uint64_t a, uint64_t b) {
     return ((a * 0x00000100000001B3)) ^ b;
 }
@@ -71,6 +72,37 @@ void calculate_dataset_item(unsigned char *cache, uint64_t cache_size, uint64_t 
     return;
 }
 
+void calculate_dataset_item_opt(unsigned char *cache, uint64_t cache_size, uint64_t i, unsigned char* dataset) {
+    uint64_t rows = cache_size / HASH_BYTES;
+
+    uint64_t *cache_u64 = (uint64_t *)cache;
+    uint64_t *mix = (uint64_t *)dataset;
+    mix[0] = cache_u64[(i % rows) * WORDS_PER_HASH] ^ i;
+    for (uint64_t j = 1; j < WORDS_PER_HASH; j++) {
+        mix[j] = cache_u64[(i % rows) * WORDS_PER_HASH + j];
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+
+    for (uint64_t j = 0; j < DATASET_PARENTS; j++) {
+        uint64_t cache_idx = fnv64(i ^ j, mix[j % WORDS_PER_HASH]) % rows;
+        uint64_t *cache_u64_ptr = &cache_u64[cache_idx * WORDS_PER_HASH];
+        mix[0] = fnv64(mix[0], cache_u64_ptr[0]);
+        mix[1] = fnv64(mix[1], cache_u64_ptr[1]);
+        mix[2] = fnv64(mix[2], cache_u64_ptr[2]);
+        mix[3] = fnv64(mix[3], cache_u64_ptr[3]);
+        mix[4] = fnv64(mix[4], cache_u64_ptr[4]);
+        mix[5] = fnv64(mix[5], cache_u64_ptr[5]);
+        mix[6] = fnv64(mix[6], cache_u64_ptr[6]);
+        mix[7] = fnv64(mix[7], cache_u64_ptr[7]);
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+    return;
+}
+
 void simple_verify() {
     unsigned char seed[] = "123";
 
@@ -90,6 +122,32 @@ void simple_verify() {
     }
     printf("\n");
 
+    return;
+}
+
+void self_verify() {
+    unsigned char seed[] = "123";
+
+    unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
+
+    unsigned char *data0 = malloc(HASH_BYTES);
+    unsigned char *data1 = malloc(HASH_BYTES);
+
+    calculate_dataset_item(cache, 1024, 123, data0);
+    calculate_dataset_item_opt(cache, 1024, 123, data1);
+    for (int i = 0; i < 64; i++) {
+        if (data0[i] != data1[i]) {
+            free(data0);
+            free(data1);
+            printf("self_verify() failed!\n");
+            return;
+        }
+    }
+
+    free(data0);
+    free(data1);
+
+    printf("self_verify() passed\n");
     return;
 }
 
@@ -117,9 +175,9 @@ void benchmark() {
     clock_gettime(CLOCK_MONOTONIC, &start);
     clock_gettime(CLOCK_MONOTONIC, &startb);
     unsigned char *data = malloc(HASH_BYTES);
-    uint64_t items = 100000;
+    uint64_t items = 10000000;
     for (uint64_t idx = 0; idx < items; idx ++) {
-        calculate_dataset_item(cache, cache_size, idx, data);
+        calculate_dataset_item_opt(cache, cache_size, idx, data);
 
         if (idx % 10000 != 0) {
             continue;
@@ -143,6 +201,7 @@ void benchmark() {
 }
 
 int main(int argc, char *argv[]) {
+    self_verify();
     benchmark();
     return (0);
 }
