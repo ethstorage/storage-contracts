@@ -98,24 +98,58 @@ void calculate_dataset_item_opt(unsigned char *cache, uint64_t cache_size, uint6
     return;
 }
 
+void calculate_mask_data(unsigned char *cache, uint64_t cache_size, uint64_t i, unsigned char* dataset) {
+    uint32_t rows = cache_size / HASH_BYTES;
+
+    uint32_t *cache_u32 = (uint32_t *)cache;
+    uint32_t *mix = (uint32_t *)dataset;
+    mix[0] = mix[0] ^ cache_u32[(i % rows) * WORDS_PER_HASH] ^ i;
+    for (uint64_t j = 1; j < WORDS_PER_HASH; j++) {
+        mix[j] = mix[j] ^ cache_u32[(i % rows) * WORDS_PER_HASH + j];
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+
+    for (uint32_t j = 0; j < DATASET_PARENTS; j++) {
+        uint32_t cache_idx = fnv32(i ^ j, mix[j % WORDS_PER_HASH]) % rows;
+        uint32_t *cache_u32_ptr = &cache_u32[cache_idx * WORDS_PER_HASH];
+        for (uint64_t k = 0; k < WORDS_PER_HASH; k++) {
+            mix[k] = fnv32(mix[k], cache_u32_ptr[k]);
+        }
+    }
+
+    // TODO: big order casting
+    SHA512(dataset, HASH_BYTES, dataset);
+    return;
+}
+
 void simple_verify() {
     unsigned char seed[] = "123";
 
     unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
 
-    uint64_t *cache_u32 = (uint64_t *)cache;
-    for (int i = 0; i < 1024 / WORD_BYTES; i++) {
-        printf("%u ", cache_u32[i]);
-    }
-    printf("\n");
+    // uint64_t *cache_u32 = (uint64_t *)cache;
+    // for (int i = 0; i < 1024 / WORD_BYTES; i++) {
+    //     printf("%u ", cache_u32[i]);
+    // }
+    // printf("\n");
 
     unsigned char *data = malloc(HASH_BYTES);
 
     calculate_dataset_item(cache, 1024, 123, data);
-    printf("expect: c098aa29873026b82035f4587d37737e3f57331a61e5f833ee4e7535955f6f3cbc75a65881d3957ec972b4fae822684a78a9bb45d5db533fb836fc1\n");
+    printf("expect: c098aa298730026b820035f4587d37737e3f5733010a61e5f833ee4e7535955f6f3cbc75a65881d3957ec972b4fae8226804a78a09bb450d5d0b5303fb836fc1\n");
     printf("actual: ");
     for (int i = 0; i < 64; i++) {
-        printf("%x", data[i]);
+        printf("%02x", data[i]);
+    }
+    printf("\n");
+
+    calculate_mask_data(cache, 1024, 123, data);
+    printf("expect: 46df553f850fc96736a154a247c7e511a70d5f8c3f8bdd1fc098c64dad77bd7341be534f0538e525cf79cede6c9ecf45b1c1418aba2cfbc5021b78517d87372a\n");
+    printf("actual: ");
+    for (int i = 0; i < 64; i++) {
+        printf("%02x", data[i]);
     }
     printf("\n");
     

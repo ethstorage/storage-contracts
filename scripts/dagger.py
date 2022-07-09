@@ -21,6 +21,11 @@ def sha512(bs):
     k.update(bs)
     return k.digest()
 
+def sha256(bs):
+    k = hashlib.sha256()
+    k.update(bs)
+    return k.digest()
+
 # hash512 = keccak512
 hash512 = sha512
 
@@ -68,22 +73,38 @@ def hash_to_words(hash):
         words.append(int.from_bytes(hash[i:i+WORD_BYTES], byteorder="little"))
     return words
 
-def calc_dataset_item(cache_u64, i: int):
-    rows = len(cache_u64) // WORDS_PER_HASH
+def calc_dataset_item(cache_u, i: int):
+    rows = len(cache_u) // WORDS_PER_HASH
     # initialize the mix
-    mix = [cache_u64[(i % rows) * WORDS_PER_HASH] ^ i]
+    mix = [cache_u[(i % rows) * WORDS_PER_HASH] ^ i]
     for j in range(1, HASH_BYTES // WORD_BYTES):
-        mix.append(cache_u64[(i % rows) * WORDS_PER_HASH + j])
+        mix.append(cache_u[(i % rows) * WORDS_PER_HASH + j])
 
     mix = hash_to_words(hash512(words_to_hash(mix)))
 
     # fnv it with a lot of random cache nodes based on i
     for j in range(DATASET_PARENTS):
         cache_index = fnv(i ^ j, mix[j % WORDS_PER_HASH]) % rows
-        mix = [fnv(x, y) for x, y in zip(mix, cache_u64[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
+        mix = [fnv(x, y) for x, y in zip(mix, cache_u[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
+    return hash512(words_to_hash(mix))
+
+def calc_mask_data(cache_u, i: int, init_hash):
+    rows = len(cache_u) // WORDS_PER_HASH
+    # initialize the mix
+    mix = [cache_u[(i % rows) * WORDS_PER_HASH] ^ i]
+    for j in range(1, HASH_BYTES // WORD_BYTES):
+        mix.append(cache_u[(i % rows) * WORDS_PER_HASH + j])
+    mix = hash_to_words(hash512(bytes(a ^ b for a, b in zip(words_to_hash(mix), init_hash))))
+
+    # fnv it with a lot of random cache nodes based on i
+    for j in range(DATASET_PARENTS):
+        cache_index = fnv(i ^ j, mix[j % WORDS_PER_HASH]) % rows
+        mix = [fnv(x, y) for x, y in zip(mix, cache_u[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
     return hash512(words_to_hash(mix))
 
 
 cache_u = to_cache_u(generate_cache(1024, b'123'))
 print(cache_u)
 print(calc_dataset_item(cache_u, 123).hex())
+
+print(calc_mask_data(cache_u, 123, calc_dataset_item(cache_u, 123)).hex())
