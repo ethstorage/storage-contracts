@@ -26,8 +26,8 @@ def sha256(bs):
     k.update(bs)
     return k.digest()
 
-# hash512 = keccak512
-hash512 = sha512
+hash512 = keccak512
+# hash512 = sha512
 
 def generate_cache(cache_size, seed):
     cache = [hash512(seed)]
