@@ -102,9 +102,25 @@ def calc_mask_data(cache_u, i: int, init_hash):
         mix = [fnv(x, y) for x, y in zip(mix, cache_u[cache_index * WORDS_PER_HASH: (cache_index+1) * WORDS_PER_HASH])]
     return hash512(words_to_hash(mix))
 
+def isprime(x):
+    for i in range(2, int(x**0.5)):
+         if x % i == 0:
+             return False
+    return True
+
+def find_ge_prime(x):
+    if x % 2 == 0:
+        x += 1
+    while not isprime(x):
+        x += 2
+    return x
+
 
 cache_u = to_cache_u(generate_cache(1024, b'123'))
 print(cache_u)
 print(calc_dataset_item(cache_u, 123).hex())
 
 print(calc_mask_data(cache_u, 123, calc_dataset_item(cache_u, 123)).hex())
+
+print(find_ge_prime(1024))
+print(find_ge_prime(1024 * 1024 * 1024 // 4))
