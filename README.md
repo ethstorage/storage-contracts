@@ -1,1 +1,1 @@
-# Web3Q Decentralized Storage Contracts
+# EthStorage Decentralized Storage Contracts
