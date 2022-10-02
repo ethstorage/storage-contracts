@@ -2,7 +2,10 @@ const { web3 } = require("hardhat");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-var ToBig = (x) => ethers.BigNumber.from(x);
+/* declare const key */
+const key1 = "0x0000000000000000000000000000000000000000000000000000000000000001"
+const key2 = "0x0000000000000000000000000000000000000000000000000000000000000002"
+const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003"
 
 describe("DecentralizedKV Test", function () {
   it("put/get/remove", async function () {
@@ -13,16 +16,16 @@ describe("DecentralizedKV Test", function () {
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
     await kv.deployed();
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+    await kv.put(key1, "0x11223344");
+    expect(await kv.get(key1, 0, 4)).to.equal(
       "0x11223344"
     );
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 1, 2)).to.equal("0x2233");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 2, 3)).to.equal("0x3344");
+    expect(await kv.get(key1, 1, 2)).to.equal("0x2233");
+    expect(await kv.get(key1, 2, 3)).to.equal("0x3344");
 
-    await kv.remove("0x0000000000000000000000000000000000000000000000000000000000000001");
-    expect(await kv.exist("0x0000000000000000000000000000000000000000000000000000000000000001")).to.equal(false);
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
+    await kv.remove(key1);
+    expect(await kv.exist(key1)).to.equal(false);
+    expect(await kv.get(key1, 0, 4)).to.equal("0x");
   });
 
   it("put/get with replacement", async function () {
@@ -33,24 +36,24 @@ describe("DecentralizedKV Test", function () {
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
     await kv.deployed();
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+    await kv.put(key1, "0x11223344");
+    expect(await kv.get(key1, 0, 4)).to.equal(
       "0x11223344"
     );
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x772233445566");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+    await kv.put(key1, "0x772233445566");
+    expect(await kv.get(key1, 0, 4)).to.equal(
       "0x77223344"
     );
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 6)).to.equal(
+    expect(await kv.get(key1, 0, 6)).to.equal(
       "0x772233445566"
     );
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x8899");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x8899");
+    await kv.put(key1, "0x8899");
+    expect(await kv.get(key1, 0, 4)).to.equal("0x8899");
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
+    await kv.put(key1, "0x");
+    expect(await kv.get(key1, 0, 4)).to.equal("0x");
   });
 
   it("put/remove with payment", async function () {
@@ -73,33 +76,33 @@ describe("DecentralizedKV Test", function () {
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
     await expect(
-      kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344")
+      kv.put(key1, "0x11223344")
     ).to.be.revertedWith("not enough payment");
     await expect(
-      kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+      kv.put(key1, "0x11223344", {
         value: "900000000000000000",
       })
     ).to.be.revertedWith("not enough payment");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+    await kv.put(key1, "0x11223344", {
       value: ethers.utils.parseEther("1.0"),
     });
 
     await kv.setTimestamp(1);
     expect(await kv.upfrontPayment()).to.equal("500000000000000000");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000002", "0x33445566", {
+    await kv.put(key2, "0x33445566", {
       value: ethers.utils.parseEther("0.5"),
     });
 
     await kv.setTimestamp(4);
     expect(await kv.upfrontPayment()).to.equal("62500000000000000");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000003", "0x778899", {
+    await kv.put(key3, "0x778899", {
       value: ethers.utils.parseEther("0.0625"),
     });
 
-    await kv.removeTo("0x0000000000000000000000000000000000000000000000000000000000000001", wallet.address);
+    await kv.removeTo(key1, wallet.address);
     expect(await wallet.getBalance()).to.equal(ethers.utils.parseEther("0.0625"));
-    expect(await kv.exist("0x0000000000000000000000000000000000000000000000000000000000000001")).to.equal(false);
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal("0x");
+    expect(await kv.exist(key1)).to.equal(false);
+    expect(await kv.get(key1, 0, 4)).to.equal("0x");
   });
 
   it("put with payment and yearly 0.9 dcf", async function () {
@@ -119,14 +122,14 @@ describe("DecentralizedKV Test", function () {
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
     await expect(
-      kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344")
+      kv.put(key1, "0x11223344")
     ).to.be.revertedWith("not enough payment");
     await expect(
-      kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+      kv.put(key1, "0x11223344", {
         value: "900000000000000000",
       })
     ).to.be.revertedWith("not enough payment");
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344", {
+    await kv.put(key1, "0x11223344", {
       value: ethers.utils.parseEther("1.0"),
     });
 

@@ -95,4 +95,25 @@ describe("MerkleLib Test", function () {
 
     await ml.keccak256NoView(crypto.randomBytes(4096 * 3));
   });
+
+  it("should forbid illegal parameter", async function () {
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
+
+    let data = crypto.randomBytes(64 * 6 + 48);
+    let root = await ml.merkleRoot(data, 64, 3);
+
+    // trys to get a out-of-bound index proof
+    await expect(ml.getProof(data, 64, 3, 10)).to.be.revertedWith("index must be within the scope of number of chunks");
+
+    let proof = await ml.getProof(data, 64, 3, 0);
+    expect(await ml.verify(data.slice(0,64), 0, 3, root, proof)).to.equal(true);
+    // out of bound index
+    expect(await ml.verify(data.slice(0,64), 8, 3, root, proof)).to.equal(false);
+    expect(await ml.verify(data.slice(0,64), 10, 3, root, proof)).to.equal(false);
+    // short proof size
+    expect(await ml.verify(data.slice(0,64), 0, 3, root, proof.slice(0,1))).to.equal(false);
+    
+  });
 });
