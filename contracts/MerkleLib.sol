@@ -41,12 +41,11 @@ library MerkleLib {
     function verify(
         bytes32 dataHash,
         uint256 chunkIdx,
-        uint256 nChunkBits,
         bytes32 root,
         bytes32[] memory proofs
     ) internal pure returns (bool) {
         bytes32 hash = dataHash;
-        if (proofs.length != nChunkBits) return false;
+        uint256 nChunkBits = proofs.length;
         if (chunkIdx >= (1 << nChunkBits)) return false;
         for (uint256 i = 0; i < nChunkBits; i++) {
             if (chunkIdx % 2 == 0) {
@@ -66,7 +65,7 @@ library MerkleLib {
         uint256 chunkIdx
     ) internal pure returns (bytes32[] memory) {
         uint256 nChunks = 1 << nChunkBits;
-        require(chunkIdx < nChunks, "index must be within the scope of number of chunks");
+        require(chunkIdx < nChunks, "index out of scope");
         bytes32[] memory nodes = new bytes32[](nChunks);
         for (uint256 i = 0; i < nChunks; i++) {
             bytes32 hash;

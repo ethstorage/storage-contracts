@@ -27,11 +27,10 @@ contract TestMerkleLib {
     function verify(
         bytes memory chunkData,
         uint256 chunkIdx,
-        uint256 nChunkBits,
         bytes32 root,
         bytes32[] memory proofs
     ) public pure returns (bool) {
-        return MerkleLib.verify(keccak256(chunkData), chunkIdx, nChunkBits, root, proofs);
+        return MerkleLib.verify(keccak256(chunkData), chunkIdx, root, proofs);
     }
 
     function getProof(
