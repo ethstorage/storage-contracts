@@ -43,10 +43,10 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
 
 contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContractDaggerHashimoto {
     function checkDaggerData(
-        uint256 kvIdx,
+        uint256,
         bytes32 kvHash,
         bytes memory maskedData
-    ) public view override returns (bool) {
+    ) public pure override returns (bool) {
         bytes32 dataHash = keccak256(maskedData);
         return bytes24(dataHash) == bytes24(kvHash);
     }

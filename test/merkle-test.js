@@ -14,7 +14,7 @@ describe("MerkleLib Test", function () {
     for (let i = 0; i < 8; i++) {
       let proof = await ml.getProof(data, 64, 3, i);
       let chunkData = data.slice(i * 64, (i + 1) * 64);
-      expect(await ml.verify(chunkData, i, 3, root, proof)).to.equal(true);
+      expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
   });
 
@@ -28,7 +28,7 @@ describe("MerkleLib Test", function () {
     for (let i = 0; i < 8; i++) {
       let proof = await ml.getProof(data, 64, 3, i);
       let chunkData = data.slice(i * 64, (i + 1) * 64);
-      expect(await ml.verify(chunkData, i, 3, root, proof)).to.equal(true);
+      expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
   });
 
@@ -45,7 +45,7 @@ describe("MerkleLib Test", function () {
       if (chunkData.length == 0) {
         break;
       }
-      expect(await ml.verify(chunkData, i, 3, root, proof)).to.equal(true);
+      expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
   });
 
@@ -62,7 +62,7 @@ describe("MerkleLib Test", function () {
       if (chunkData.length == 0) {
         break;
       }
-      expect(await ml.verify(chunkData, i, 3, root, proof)).to.equal(true);
+      expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
   });
 
@@ -79,7 +79,7 @@ describe("MerkleLib Test", function () {
       if (chunkData.length == 0) {
         break;
       }
-      expect(await ml.verify(chunkData, i, 3, root, proof)).to.equal(true);
+      expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
   });
 
@@ -94,5 +94,23 @@ describe("MerkleLib Test", function () {
     await ml.merkleRootNoView(crypto.randomBytes(4096 * 3), 4096, 3);
 
     await ml.keccak256NoView(crypto.randomBytes(4096 * 3));
+  });
+
+  it("should forbid illegal parameter", async function () {
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
+
+    let data = crypto.randomBytes(64 * 6 + 48);
+    let root = await ml.merkleRoot(data, 64, 3);
+
+    // trys to get a out-of-bound index proof
+    await expect(ml.getProof(data, 64, 3, 10)).to.be.revertedWith("index out of scope");
+
+    let proof = await ml.getProof(data, 64, 3, 0);
+    expect(await ml.verify(data.slice(0,64), 0, root, proof)).to.equal(true);
+    // out of bound index
+    expect(await ml.verify(data.slice(0,64), 8, root, proof)).to.equal(false);
+    expect(await ml.verify(data.slice(0,64), 10, root, proof)).to.equal(false);
   });
 });
