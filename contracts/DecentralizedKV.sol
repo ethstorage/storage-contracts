@@ -17,10 +17,13 @@ contract DecentralizedKV {
     struct PhyAddr {
         uint40 kvIdx;
         uint24 kvSize;
+        // commitment
         bytes24 hash;
     }
 
+    // skey - PhyAddr
     mapping(bytes32 => PhyAddr) internal kvMap;
+    // index - skey, reverse lookup
     mapping(uint256 => bytes32) internal idxMap;
 
     constructor(

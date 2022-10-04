@@ -3,10 +3,13 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
+var padRight32 = (x) => x.padEnd(66, "0");
+var padLeft32 = (x) => ethers.utils.hexZeroPad(x, 32);
 var padRight64 = (x) => x.padEnd(130, "0");
 var padLeft64 = (x) => ethers.utils.hexZeroPad(x, 64);
 var hexlify64 = (x) => padLeft64(ethers.utils.hexlify(x));
 var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
+var formatB32Str = (x) => ethers.utils.formatBytes32String(x);
 var keccak256 = (x) => ethers.utils.keccak256(x);
 
 describe("Basic Func Test", function () {
@@ -188,5 +191,81 @@ describe("Basic Func Test", function () {
       // dataList[30],
       // dataList[13],
     ]);
+  });
+
+  it("calculateDiffAndInitHash", async function () {
+    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+    const sc = await SystemContract.deploy();
+    await sc.deployed();
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+    const kv = await MinabledKV.deploy([5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
+    await kv.deployed();
+
+    let m0 = await kv.calculateDiffAndInitHash(0, 1, 5);
+    let h0 = keccak256(ethers.utils.concat([formatB32Str(""), padLeft32("0x00"), formatB32Str("genesis")]));
+    expect(m0).to.be.eql([ToBig("10"), [ToBig("10")], h0]);
+
+    let m1 = await kv.calculateDiffAndInitHash(1, 1, 5);
+    let h1 = keccak256(ethers.utils.concat([formatB32Str(""), padLeft32("0x01"), formatB32Str("genesis")]));
+    expect(m1).to.be.eql([ToBig("10"), [ToBig("10")], h1]);
+
+    let m01 = await kv.calculateDiffAndInitHash(0, 2, 5);
+    let h01 = keccak256(ethers.utils.concat([h0, padLeft32("0x01"), formatB32Str("genesis")]));
+    expect(m01).to.be.eql([ToBig("20"), [ToBig("10"), ToBig("10")], h01]);
+  });
+});
+
+describe("Full cycle of mining procedure", function () {
+  const maxKvSizeBits = 12;
+  const shardSizeBits = 17;
+  const randomChecks = 16;
+  const minimumDiff = 10;
+  const targetIntervalSec = 60;
+  const cutoff = 40;
+  const diffAdjDivisor = 1024;
+  const coinbaseShare = 0;
+
+  it("runs full mining cycle", async function () {
+    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+    const sc = await SystemContract.deploy();
+
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+    // 4096 bytes per data, 32 entries in shard, 16 random access
+    const kv = await MinabledKV.deploy(
+      [maxKvSizeBits, shardSizeBits, randomChecks, minimumDiff, 
+       targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
+      0, //startTime
+      0, //storageCost
+      0, // dcfFactor
+      ethers.utils.formatBytes32String("") //genesisHash
+    );
+    await kv.deployed();
+
+    let mining_debug_last_shard = async function(str){
+      let lastKvIdx = await kv.lastMinableShardIdx();
+      let info = await kv.infos(lastKvIdx);
+      console.log("Stage %s MiningInfo :",str);
+      console.log(info);
+    };
+    
+    mining_debug_last_shard("INIT");
+    let l = 0;
+    let dataList = [];
+    for (let i = 0; i < 32; i++) {
+      let d = "0x";
+      for (let j = 0; j < 4096 / 32; j++) {
+        d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(l))]);
+        l = l + 1;
+      }
+      dataList.push(d);
+      await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
+    }
+
+    // PUT won't change the diff info
+
+    let meta = await kv.calculateDiffAndInitHash(0,1,120);
+    console.log("Diff diffs and hash: ")
+    console.log(meta);
+
   });
 });

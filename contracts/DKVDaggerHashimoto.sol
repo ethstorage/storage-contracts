@@ -194,6 +194,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
     /*
      * Run a modified hashimoto hash.
+     * This is eaiser running in contract
      */
     function _hashimotoKeccak256(
         uint256 startShardId,
@@ -284,6 +285,12 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         payable(miner).transfer(minerReward);
     }
 
+    /* In fact, this is on-chain function used for verifying whether what a miner claims,
+       is satisfying the truth, or not.
+       Nonce, along with maskedData, associated with mineTs and idx, are proof.
+       On-chain verifier will go same routine as off-chain data host, will check the soundness of data,
+       by running hashimoto algorithm, to get hash H. Then if it passes the difficulty check,
+       the miner, or say the proof provider, shall be rewarded by the token number from out economic models */
     function _mine(
         uint256 timestamp,
         uint256 startShardId,
@@ -301,7 +308,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             minedTs
         );
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimoto(startShardId, shardLenBits, hash0, maskedData);
+        //hash0 = _hashimoto(startShardId, shardLenBits, hash0, maskedData);
+        hash0 = _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
@@ -312,7 +320,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
 
-    // We allow cross mine multiple shards by aggregate their difficulties.
+    // We allow cross mine multiple shards by aggregating their difficulties.
     function mine(
         uint256 startShardId,
         uint256 shardLenBits,
