@@ -46,6 +46,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
+        require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
         shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
         randomChecks = _config.randomChecks;
         minimumDiff = _config.minimumDiff;

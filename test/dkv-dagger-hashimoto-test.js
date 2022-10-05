@@ -11,6 +11,8 @@ var hexlify64 = (x) => padLeft64(ethers.utils.hexlify(x));
 var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
 var formatB32Str = (x) => ethers.utils.formatBytes32String(x);
 var keccak256 = (x) => ethers.utils.keccak256(x);
+var concat = (x) => ethers.utils.concat(x);
+const byteSize = str => new Blob([str]).size;
 
 describe("Basic Func Test", function () {
   it("hashimoto-tiny", async function () {
@@ -216,21 +218,40 @@ describe("Basic Func Test", function () {
 });
 
 describe("Full cycle of mining procedure", function () {
-  const maxKvSizeBits = 12;
-  const shardSizeBits = 17;
-  const randomChecks = 16;
+  const maxKvSizeBits = 6;
+  const shardSizeBits = 10;
+  const randomChecks = 4;
   const minimumDiff = 10;
   const targetIntervalSec = 60;
   const cutoff = 40;
   const diffAdjDivisor = 1024;
   const coinbaseShare = 0;
+  const shardEntryBits = shardSizeBits - maxKvSizeBits;
+
+  const LIMIT = 100000;
+
+  function hashimoto_local( _hash0, maskedData) {
+    let hash0 = _hash0;
+    for (let i = 0; i < randomChecks; i++) {
+        hash0 = keccak256(concat([ethers.utils.hexlify(hash0), maskedData[i]]))
+    }
+    return hash0;
+  }
+
+  function random_generator() {
+    const numbers = Array((1 << (shardSizeBits - maxKvSizeBits))).fill().map((_, index) => index + 1);
+    numbers.sort(() => Math.random() - 0.5);
+    return numbers.slice(0,randomChecks);
+  }
 
   it("runs full mining cycle", async function () {
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    let wallet = ethers.Wallet.createRandom().connect(owner.provider);
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
     const sc = await SystemContract.deploy();
 
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    // 4096 bytes per data, 32 entries in shard, 16 random access
+    // 64 bytes per data, 16 entries in shard, 4 random access
     const kv = await MinabledKV.deploy(
       [maxKvSizeBits, shardSizeBits, randomChecks, minimumDiff, 
        targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
@@ -242,8 +263,8 @@ describe("Full cycle of mining procedure", function () {
     await kv.deployed();
 
     let mining_debug_last_shard = async function(str){
-      let lastKvIdx = await kv.lastMinableShardIdx();
-      let info = await kv.infos(lastKvIdx);
+      const lastKvIdx = await kv.lastMinableShardIdx();
+      const info = await kv.infos(lastKvIdx);
       console.log("Stage %s MiningInfo :",str);
       console.log(info);
     };
@@ -251,21 +272,60 @@ describe("Full cycle of mining procedure", function () {
     mining_debug_last_shard("INIT");
     let l = 0;
     let dataList = [];
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < (1 << (shardSizeBits - maxKvSizeBits)); i++) {
       let d = "0x";
-      for (let j = 0; j < 4096 / 32; j++) {
+      for (let j = 0; j < (1<<maxKvSizeBits) / 32; j++) {
         d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(l))]);
         l = l + 1;
       }
       dataList.push(d);
+      // PUT won't change the diff info
       await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
     }
 
-    // PUT won't change the diff info
-
-    let meta = await kv.calculateDiffAndInitHash(0,1,120);
+    const mineTs = 120;
+    const meta = await kv.calculateDiffAndInitHash(0,1,120);
+    const diff = meta.diff;
     console.log("Diff diffs and hash: ")
     console.log(meta);
 
+    let hash0 = meta.hash0;
+    let nonce = 0;
+    let maskedData = [];
+    while (nonce < LIMIT)
+    {
+      console.log("Turn %d \n", nonce);
+      hash0 = keccak256(ethers.utils.concat([
+        ethers.utils.hexlify(hash0),
+        ethers.utils.hexlify(wallet.address),
+        formatB32Str(mineTs.toString()),
+        formatB32Str(nonce.toString())
+      ]));
+      
+      const randomList = random_generator();
+      console.log("randomList is ");
+      console.log(Array.from(randomList));
+      let dataSlice = [];
+      Array.from(randomList, x => dataSlice.push(dataList[x]));
+
+      hash0 = hashimoto_local(hash0, dataSlice);
+
+      const numericalHash = ethers.BigNumber.from(hash0);
+      const dividend = ethers.BigNumber.from(2);
+      const required = dividend.pow(256).sub(1).div(diff);
+      if (numericalHash.gt(required)){
+        // matched
+        maskedData = dataSlice;
+        break;
+      }
+      // failed to search
+      nonce = nonce + 1;
+    }
+    expect(LIMIT).to.be.above(nonce);
+    kv.setTimestamp(240);
+    console.log("current time stamp");
+    console.log(await kv.currentTimestamp());
+    await kv.mine(0,1,wallet.address,mineTs,nonce,maskedData);
+    
   });
 });
