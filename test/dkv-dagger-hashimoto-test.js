@@ -12,7 +12,7 @@ var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
 var formatB32Str = (x) => ethers.utils.formatBytes32String(x);
 var keccak256 = (x) => ethers.utils.keccak256(x);
 var concat = (x) => ethers.utils.concat(x);
-const byteSize = str => new Blob([str]).size;
+var hexlen = (str) => ethers.utils.hexDataLength(ethers.utils.hexlify(str));
 
 describe("Basic Func Test", function () {
   it("hashimoto-tiny", async function () {
@@ -228,18 +228,61 @@ describe("Full cycle of mining procedure", function () {
   const coinbaseShare = 0;
   const shardEntryBits = shardSizeBits - maxKvSizeBits;
 
-  const LIMIT = 100000;
+  const LIMIT = 10;
 
-  function hashimoto_local( _hash0, maskedData) {
+  var local_idx_2_key = x => ethers.utils.formatBytes32String(x.toString());
+  const hash2idx = new Map();
+
+  /* Conduct a off-chain pre-check for gaining reward purpose */
+  async function hashimoto_local(startShardId, shardLenBits, _hash0, maskedData, kv, sc) {
+    const maxKvSize = 1 << maxKvSizeBits;
+    const rows = 1 << (shardEntryBits + shardLenBits);
     let hash0 = _hash0;
     for (let i = 0; i < randomChecks; i++) {
-        hash0 = keccak256(concat([ethers.utils.hexlify(hash0), maskedData[i]]))
+        const parent = ethers.BigNumber.from(hash0).mod(rows).toNumber();
+        const kvIdx = parent + (startShardId << shardEntryBits);
+        const skey = await kv.idxMap(kvIdx);;
+        const phy = await kv.kvMap(skey);
+        const data_hash = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(phy.hash)));
+        const matched = await sc.checkDaggerData(kvIdx, data_hash, maskedData[i]);
+        if (!matched) {
+          console.log("Hashimoto: round %d, kvIdx %d, didn't pass Dagger check.", i, kvIdx);
+          console.log("Hash: "+data_hash);
+          if (hash2idx.has(data_hash))
+            console.log("Ths hash has in data, id is " + hash2idx.get(data_hash));
+          else
+            console.log("The hash does not exist in data set");
+
+          return [0, false];
+        }
+        hash0 = keccak256(concat([padLeft32(ethers.utils.hexlify(hash0)), maskedData[i]]));
     }
-    return hash0;
+    return [hash0, true];
+  }
+
+  function permutator(inputArr) {
+    var results = [];
+  
+    function permute(arr, memo) {
+      var cur, memo = memo || [];
+  
+      for (var i = 0; i < arr.length; i++) {
+        cur = arr.splice(i, 1);
+        if (arr.length === 0) {
+          results.push(memo.concat(cur));
+        }
+        permute(arr.slice(), memo.concat(cur));
+        arr.splice(i, 0, cur[0]);
+      }
+  
+      return results;
+    }
+  
+    return permute(inputArr);
   }
 
   function random_generator() {
-    const numbers = Array((1 << (shardSizeBits - maxKvSizeBits))).fill().map((_, index) => index + 1);
+    const numbers = Array((1 << (shardSizeBits - maxKvSizeBits))-1).fill().map((_, index) => index + 1);
     numbers.sort(() => Math.random() - 0.5);
     return numbers.slice(0,randomChecks);
   }
@@ -280,7 +323,14 @@ describe("Full cycle of mining procedure", function () {
       }
       dataList.push(d);
       // PUT won't change the diff info
-      await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
+      await kv.put(local_idx_2_key(i), dataList[i]);
+    }
+
+    for (let i=0;i<(1 << (shardSizeBits - maxKvSizeBits));i++) {
+      const pre_hash = keccak256(dataList[i]);
+      const hash = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(pre_hash)));
+      console.log("Hash is " + hash + " and the idx is "+i);
+      hash2idx.set(hash,i);
     }
 
     const mineTs = 120;
@@ -296,27 +346,32 @@ describe("Full cycle of mining procedure", function () {
     {
       console.log("Turn %d \n", nonce);
       hash0 = keccak256(ethers.utils.concat([
-        ethers.utils.hexlify(hash0),
+        padLeft32(ethers.utils.hexlify(hash0)),
         ethers.utils.hexlify(wallet.address),
         formatB32Str(mineTs.toString()),
         formatB32Str(nonce.toString())
       ]));
       
+      /* random fashion */
       const randomList = random_generator();
-      console.log("randomList is ");
-      console.log(Array.from(randomList));
+      console.log("random List " + randomList);
       let dataSlice = [];
       Array.from(randomList, x => dataSlice.push(dataList[x]));
 
-      hash0 = hashimoto_local(hash0, dataSlice);
-
-      const numericalHash = ethers.BigNumber.from(hash0);
-      const dividend = ethers.BigNumber.from(2);
-      const required = dividend.pow(256).sub(1).div(diff);
-      if (numericalHash.gt(required)){
-        // matched
-        maskedData = dataSlice;
-        break;
+      const ret = await hashimoto_local(0,0, hash0, dataSlice, kv, sc);
+      const success = ret[1];
+      if (success) {
+        hash0 = ret[0];
+        const numericalHash = ethers.BigNumber.from(hash0);
+        console.log("numerical Hash is " + numericalHash);
+        const dividend = ethers.BigNumber.from(2);
+        const required = dividend.pow(256).sub(1).div(diff);
+        console.log("required : " + required);
+        if (numericalHash.gt(required)){
+          // matched
+          maskedData = dataSlice;
+          break;
+        }
       }
       // failed to search
       nonce = nonce + 1;
@@ -325,7 +380,7 @@ describe("Full cycle of mining procedure", function () {
     kv.setTimestamp(240);
     console.log("current time stamp");
     console.log(await kv.currentTimestamp());
-    await kv.mine(0,1,wallet.address,mineTs,nonce,maskedData);
+    await kv.mine(0,0,wallet.address,mineTs,nonce,maskedData);
     
   });
 });
