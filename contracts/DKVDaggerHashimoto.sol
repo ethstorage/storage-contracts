@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./DecentralizedKV.sol";
 import "./MiningLib.sol";
+import "hardhat/console.sol";
 
 /*
  * Decentralized KV with Dagger-Hashimoto mining algorithm.
@@ -212,6 +213,11 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = maskedData[i];
+            console.log("hash0 : ");
+            console.logBytes32(hash0);
+            console.log("kv hash : ");
+            console.logBytes24(kvMap[idxMap[kvIdx]].hash);
+            console.log("kvIdx is %s ", kvIdx);
             require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
 
             assembly {
@@ -308,7 +314,16 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             shardLen,
             minedTs
         );
+        console.log("####checking input hash0######");
+        console.log("hash0 before");
+        console.logBytes32(hash0);
+        console.log("miner");
+        console.logAddress(miner);
+        console.log("minedTs %d noce %d", minedTs, nonce);
+        console.log("####end checking ######");
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
+        console.log("hash0 after ");
+        console.logBytes32(hash0);
         //hash0 = _hashimoto(startShardId, shardLenBits, hash0, maskedData);
         hash0 = _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
 
