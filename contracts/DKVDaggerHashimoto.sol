@@ -195,7 +195,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
     /*
      * Run a modified hashimoto hash.
-     * This is eaiser running in contract
+     * This is eaiser running in evm
      */
     function _hashimotoKeccak256(
         uint256 startShardId,
