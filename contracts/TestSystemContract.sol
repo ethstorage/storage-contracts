@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./TestStorageManager.sol";
 import "./IStorageManager.sol";
-import "hardhat/console.sol";
 
 contract TestSystemContract is TestStorageManager, ISystemContract {
     uint256 immutable maxKvSize;
@@ -47,16 +46,8 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         uint256,
         bytes32 kvHash,
         bytes memory maskedData
-    ) public view override returns (bool) {
+    ) public pure override returns (bool) {
         bytes32 dataHash = keccak256(maskedData);
-        console.log("in coming kvHash in 32 bytes");
-        console.logBytes32(kvHash);
-        console.log("dataHash in 32 bytes");
-        console.logBytes32(dataHash);
-        console.log("in coming kvHash in 24 bytes");
-        console.logBytes24(bytes24(kvHash));
-        console.log("dataHash in 24 bytes");
-        console.logBytes24(bytes24(dataHash));
         return bytes24(dataHash) == bytes24(kvHash);
     }
 }

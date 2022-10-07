@@ -227,11 +227,11 @@ describe("Full cycle of mining procedure", function () {
   const diffAdjDivisor = 1024;
   const coinbaseShare = 0;
   const shardEntryBits = shardSizeBits - maxKvSizeBits;
+  const verbose = false;
 
   const LIMIT = 100;
 
-  var local_idx_2_key = x => ethers.utils.formatBytes32String(x.toString());
-  const hash2idx = new Map();
+  const local_idx_2_key = x => ethers.utils.formatBytes32String(x.toString());
 
   /* Conduct a off-chain pre-check for gaining reward purpose */
   async function hashimoto_local(startShardId, shardLenBits, _hash0, maskedData, randomList, kv, sc) {
@@ -241,34 +241,18 @@ describe("Full cycle of mining procedure", function () {
     for (let i = 0; i < randomChecks; i++) {
         const parent = ethers.BigNumber.from(hash0).mod(rows).toNumber();
         const kvIdx = parent + (startShardId << shardEntryBits);
+        /* Try not to use contract kvMap and idxMap, to reduce gas cost */
+        /*
         const skey = await kv.idxMap(kvIdx);;
         const phy = await kv.kvMap(skey);
         const original_hash = ethers.utils.hexlify(ethers.BigNumber.from(phy.hash));
         const data_hash = padRight32(original_hash);
-        console.log("original hash "+ original_hash + " length " + hexlen(original_hash))
-        console.log("after padding hash " + data_hash + " length " + hexlen(data_hash));
         const matched = await sc.checkDaggerData(kvIdx, data_hash, maskedData[i]);
-        // is it equal to check kvIdx == i ?
-        if (!matched) {
-          console.log("Hashimoto: round %d, kvIdx %d, slice id %d,  didn't pass Dagger check.", i, kvIdx, randomList[i]);
-          console.log("Hash different ? phy : " + phy.hash + " while calldata: " + data_hash);
-          if (hash2idx.has(data_hash))
-            console.log("Ths hash has in data, id is " + hash2idx.get(data_hash));
-          else
-            console.log("The hash does not exist in data set");
-          if  (kvIdx == randomList[i]) {
-            const preOffChain = keccak256(maskedData[i]);
-            const offChainHash = padRight32(ethers.utils.hexlify(ethers.BigNumber.from(preOffChain.slice(0,preOffChain.length-16))));
-            console.log("Onchain hash is " + data_hash + " and local is " + offChainHash);
-            console.log("They are identical? ", data_hash == offChainHash);
-          }
+        */
+        // is it equal to check kvIdx == random_i, in this shard local data
+        if (kvIdx != randomList[i]) {
           return [0, false];
         }
-        const preOffChain = keccak256(maskedData[i]);
-        const offChainHash = padRight32(ethers.utils.hexlify(ethers.BigNumber.from(preOffChain.slice(0,preOffChain.length-16))));
-        console.log("Hashimoto: round %d, kvIdx %d, slice id %d, pass Dagger check.", i, kvIdx, randomList[i]);
-        console.log("Onchain hash is " + data_hash + " and local is " + offChainHash);
-        console.log("They are identical? ", data_hash == offChainHash);
         hash0 = keccak256(concat([padRight32(ethers.utils.hexlify(hash0)), maskedData[i]]));
     }
     return [hash0, true];
@@ -319,14 +303,16 @@ describe("Full cycle of mining procedure", function () {
     );
     await kv.deployed();
 
-    let mining_debug_last_shard = async function(str){
-      const lastKvIdx = await kv.lastMinableShardIdx();
-      const info = await kv.infos(lastKvIdx);
-      console.log("Stage %s MiningInfo :",str);
-      console.log(info);
-    };
-    
-    mining_debug_last_shard("INIT");
+    /* Debug : check the meta at beginning */
+    if(verbose){
+      let mining_debug_last_shard = async function(str){
+        const lastKvIdx = await kv.lastMinableShardIdx();
+        const info = await kv.infos(lastKvIdx);
+        console.log("Stage %s MiningInfo :",str);
+        console.log(info);
+      };
+      mining_debug_last_shard("INIT");
+    }
     let l = 0;
     let dataList = [];
     for (let i = 0; i < (1 << (shardSizeBits - maxKvSizeBits)); i++) {
@@ -340,40 +326,27 @@ describe("Full cycle of mining procedure", function () {
       await kv.put(local_idx_2_key(i), dataList[i]);
     }
 
-    for (let i=0;i<(1 << (shardSizeBits - maxKvSizeBits));i++) {
-      const h0 = keccak256(dataList[i]);
-      const h1 = h0.slice(0, h0.length-16);
-      const hash = padRight32(ethers.utils.hexlify(ethers.BigNumber.from(h1)));
-      console.log("Hash is " + hash + " and the idx is "+i);
-      hash2idx.set(hash,i);
-    }
-
     const mineTs = 120;
     kv.setTimestamp(240);
     const meta = await kv.calculateDiffAndInitHash(0,1,mineTs);
     const diff = meta.diff.toNumber();
-    console.log("Diff diffs and hash: ")
-    console.log(meta);
-
     const nonce = 1;
+
     let count = 0;
     let maskedData = [];
     while (count < LIMIT)
     {
-      console.log("Turn %d ", count);
+      if(verbose){
+        console.log("Turn %d ", count);
+      }
       const a = ethers.utils.hexlify(meta.hash0);
-      const b = ethers.utils.hexlify(wallet.address);
-      //const c = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(mineTs)));
-      //const d = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(nonce)));
-      const c = mineTs;
-      const d = nonce;
-      console.log("@@@ hash0 "+ a + " address " + b + " minedT " + c + " nonce "+d + " @@@");
+      const b = padLeft32(ethers.utils.hexlify(wallet.address));
+      const c = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(mineTs)));
+      const d = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(nonce)));
       const h0 = keccak256(ethers.utils.concat([a,b,c,d]));
-      console.log("hash0 is " + h0 + " length is " + hexlen(ethers.utils.hexlify(ethers.BigNumber.from(h0))));
-      /* random fashion */
-      // const randomList = random_generator();
+      /* random fashion: ready hard to find */
+      //const randomList = random_generator();
       const randomList = [count % (1 << (shardSizeBits - maxKvSizeBits))];
-      console.log("random List " + randomList);
       let dataSlice = [];
       Array.from(randomList, x => dataSlice.push(dataList[x]));
 
@@ -382,7 +355,6 @@ describe("Full cycle of mining procedure", function () {
       if (success) {
         const ret_hash0 = ret[0];
         const numericalHash = ethers.BigNumber.from(ret_hash0);
-        console.log("numerical Hash is " + numericalHash);
         const dividend = ethers.BigNumber.from(2);
         const ratio = dividend.pow(256).sub(1).div(numericalHash).toNumber();
         if (ratio >= diff){

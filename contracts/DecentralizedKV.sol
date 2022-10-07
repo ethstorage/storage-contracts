@@ -22,9 +22,9 @@ contract DecentralizedKV {
     }
 
     // skey - PhyAddr
-    mapping(bytes32 => PhyAddr) public kvMap;
+    mapping(bytes32 => PhyAddr) internal kvMap;
     // index - skey, reverse lookup
-    mapping(uint256 => bytes32) public idxMap;
+    mapping(uint256 => bytes32) internal idxMap;
 
     constructor(
         IStorageManager _storageManager,
