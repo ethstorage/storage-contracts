@@ -133,12 +133,18 @@ contract DecentralizedKVMinable is DecentralizedKV {
         }
     }
 
+    /* TODO: THIS IS VULNERABLE WHEN FACING LAZY DATA PROVIDER
+       It can be affected by an attack vertor, for the way generates random access positions and verifying procedure
+       Supppose a lazy data provider only stores 80% of data trunck and submits proof only based on partial data
+       It can still pass this checker.
+       NOTE: Hashimoto can solve this attack perspective */
     function _checkProofOfRandomAccess(
         uint256 startShardId,
         uint256 shardLenBits,
         bytes32 hash0,
         bytes[] memory maskedData
     ) internal view returns (bytes32 hash) {
+        require(maskedData.length > 0);
         (uint256[] memory kvIdxs, uint256[] memory kvSizes) = _calculateRandomAccess(
             startShardId,
             shardLenBits,
@@ -148,7 +154,8 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes32[] memory dataHashes = systemContract.maskedDataHashes(kvIdxs, kvSizes, maskedData);
         uint256 matched = 0;
 
-        bytes memory mixedData = new bytes(maxKvSize);
+        uint256 dataSize = maskedData[0].length;
+        bytes memory mixedData = new bytes(dataSize);
 
         for (uint256 i = 0; i < maskedData.length; i++) {
             require(maskedData[i].length == maxKvSize, "masked data len wrong");

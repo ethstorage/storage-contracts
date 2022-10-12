@@ -15,12 +15,17 @@ contract DecentralizedKV {
     IStorageManager public immutable storageManager;
 
     struct PhyAddr {
+        /* Internal address seeking */
         uint40 kvIdx;
+        /* Block Size. aligned with 2^n */
         uint24 kvSize;
+        /* Commitment */
         bytes24 hash;
     }
 
+    /* skey - PhyAddr */
     mapping(bytes32 => PhyAddr) internal kvMap;
+    /* index - skey, reverse lookup */
     mapping(uint256 => bytes32) internal idxMap;
 
     constructor(
