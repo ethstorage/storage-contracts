@@ -169,7 +169,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
             } else {
                 bytes32 skey = idxMap[kvIdx];
                 // Expect the provided masked data equals to local hash
-                if (bytes24(dataHashes[i]) == kvMap[skey].hash) {
+                if (dataHashes[i] == kvMap[skey].hash) {
                     matched = matched + 1;
                 }
             }

@@ -152,7 +152,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
          * lookupTableBytes: 4096 vs 64
          * use XOR with random position of mix data intead of FNV with fixed mix positions for faster speed
          */
-        require(maskedData.length == randomChecks, "incorrect PoRA");
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         uint256 maxKvSize = 1 << maxKvSizeBits;
         bytes memory mix = new bytes(maxKvSize);
         for (uint256 j = 32; j <= maxKvSize; j += 32) {
@@ -178,7 +178,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = mixData % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = maskedData[i];
-            require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+            require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data),
+                    "invalid access proof");
 
             // Next mixOff
             mixOff = (mixData >> (shardEntryBits + shardLenBits)) % (maxKvSize - 32);
@@ -195,7 +196,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
     /*
      * Run a modified hashimoto hash.
-     * This is eaiser running in evm
+     * This is eaiser running in evm, and it is designed for smaller size
      */
     function _hashimotoKeccak256(
         uint256 startShardId,
@@ -203,7 +204,10 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 hash0,
         bytes[] memory maskedData
     ) internal view returns (bytes32) {
-        require(maskedData.length == randomChecks, "incorrect PoRA");
+        /* Assumption check */
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
+        if (randomChecks != 0) require(maskedData[0].length <= SYSTEM_BLOCK_SIZE, "too large data uploaded");
+
         uint256 maxKvSize = 1 << maxKvSizeBits;
         uint256 rows = 1 << (shardEntryBits + shardLenBits);
 
@@ -212,7 +216,44 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = maskedData[i];
-            require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+            require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data),
+                    "invalid access proof");
+
+            assembly {
+                mstore(data, hash0)
+                hash0 := keccak256(data, add(maxKvSize, 0x20))
+                mstore(data, maxKvSize)
+            }
+        }
+        return hash0;
+    }
+
+    /*
+     * Run a modified hashimoto hash,
+     * with Merkle inclusion proofs
+     */
+    function _hashimotoMerkleProof(
+        uint256 startShardId,
+        uint256 shardLenBits,
+        bytes32 hash0,
+        uint256[] memory checkIdList,
+        bytes32[][] memory proofsDim2,
+        bytes[] memory maskedData
+    ) internal view returns (bytes32) {
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
+        require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
+        require(checkIdList.length == randomChecks, "proofs idx vs checks: length mismatch");
+        uint256 maxKvSize = 1 << maxKvSizeBits;
+        uint256 rows = 1 << (shardEntryBits + shardLenBits);
+
+        for (uint256 i = 0; i < randomChecks; i++) {
+            require(maskedData[i].length == maxKvSize, "invalid proof size");
+            uint256 parent = uint256(hash0) % rows;
+            uint256 kvIdx = parent + (startShardId << shardEntryBits);
+            bytes memory data = maskedData[i];
+            require(systemContract.checkDaggerDataWithProof(checkIdList[i], 
+                    kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
+                    "invalid access proof");
 
             assembly {
                 mstore(data, hash0)
@@ -299,6 +340,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         address miner,
         uint256 minedTs,
         uint256 nonce,
+        uint256[] memory checkIdList,
+        bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal {
         require(minedTs <= timestamp, "minedTs too large");
@@ -310,7 +353,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         );
         
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
+        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, checkIdList, proofsDim2, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
@@ -328,8 +371,10 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         address miner,
         uint256 minedTs,
         uint256 nonce,
+        uint256[] memory checkIdList,
+        bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) public virtual {
-        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, maskedData);
+        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, checkIdList, proofsDim2, maskedData);
     }
 }

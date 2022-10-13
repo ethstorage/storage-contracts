@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./IStorageManager.sol";
+import "./MerkleLib.sol";
+import "hardhat/console.sol";
 
 contract DecentralizedKV {
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
@@ -11,6 +13,7 @@ contract DecentralizedKV {
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
+    uint32 public constant SYSTEM_BLOCK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
 
     IStorageManager public immutable storageManager;
 
@@ -20,7 +23,7 @@ contract DecentralizedKV {
         /* Block Size. aligned with 2^n */
         uint24 kvSize;
         /* Commitment */
-        bytes24 hash;
+        bytes32 hash;
     }
 
     /* skey - PhyAddr */
@@ -43,17 +46,9 @@ contract DecentralizedKV {
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {
-        // 1.0 in Q128.128
-        uint256 v = 1 << 128;
-        while (n != 0) {
-            if ((n & 1) == 1) {
-                v = (v * fp) >> 128;
-            }
-            fp = (fp * fp) >> 128;
-            n = n / 2;
-        }
-        return v;
+        return BinaryRelated.pow(fp, n);
     }
+
 
     // Evaluate payment from [t0, t1) seconds
     function _paymentInInterval(
@@ -89,6 +84,11 @@ contract DecentralizedKV {
 
     function _preparePut() internal virtual {}
 
+    function generateChunkBits(uint256 dataLen) internal pure returns (uint256) {
+        uint256 n = dataLen / SYSTEM_BLOCK_SIZE;
+        return (n <= 1) ? 0 : BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
+    }
+
     // Write a large value to KV store.  If the KV pair exists, overrides it.  Otherwise, will append the KV to the KV array.
     function put(bytes32 key, bytes memory data) public payable {
         require(data.length <= maxKvSize, "data too large");
@@ -104,16 +104,11 @@ contract DecentralizedKV {
             lastKvIdx = lastKvIdx + 1;
         }
         paddr.kvSize = uint24(data.length);
-        paddr.hash = bytes24(keccak256(data));
+        uint256 nChunkBits = generateChunkBits(data.length);
+        paddr.hash = MerkleLib.merkleRoot(data, SYSTEM_BLOCK_SIZE, nChunkBits);
         kvMap[skey] = paddr;
 
-        // Weird that cannot call precompiled contract like this (solidity issue?)
-        // storageManager.putRaw(paddr.kvIdx, data);
-        // Use call directly instead.
-        (bool success, ) = address(storageManager).call(
-            abi.encodeWithSelector(IStorageManager.putRaw.selector, paddr.kvIdx, data)
-        );
-        require(success, "failed to putRaw");
+        storageManager.putRaw(paddr.kvIdx, data);
     }
 
     // Return the size of the keyed value
@@ -148,14 +143,7 @@ contract DecentralizedKV {
             len = paddr.kvSize - off;
         }
 
-        // Weird that we cannot call a precompile contract like this (solidity issue?).
-        // return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
-        // Use staticcall directly instead.
-        (bool success, bytes memory data) = address(storageManager).staticcall(
-            abi.encodeWithSelector(IStorageManager.getRaw.selector, paddr.hash, paddr.kvIdx, off, len)
-        );
-        require(success, "failed to getRaw");
-        return abi.decode(data, (bytes));
+        return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
     }
 
     // Remove an existing KV pair to a recipient.  Refund the cost accordingly.
@@ -198,7 +186,7 @@ contract DecentralizedKV {
         if (paddr.kvSize != data.length) {
             return false;
         }
-
-        return paddr.hash == bytes24(keccak256(data));
+        uint256 nChunkBits = generateChunkBits(data.length);
+        return paddr.hash == MerkleLib.merkleRoot(data, SYSTEM_BLOCK_SIZE, nChunkBits);
     }
 }

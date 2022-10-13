@@ -285,7 +285,7 @@ describe("Full cycle of mining procedure", function () {
     return numbers.slice(0,randomChecks);
   }
 
-  it("runs full mining cycle", async function () {
+  it("runs full mining cycle small", async function () {
     const [owner, addr1, addr2] = await ethers.getSigners();
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
@@ -368,7 +368,7 @@ describe("Full cycle of mining procedure", function () {
     }
     expect(LIMIT).to.be.above(count);
 
-    await kv.mine(0,0,wallet.address,mineTs,nonce,maskedData);
+    await kv.mine(0,0,wallet.address,mineTs,nonce,[0],[[]],maskedData);
     
   });
 });

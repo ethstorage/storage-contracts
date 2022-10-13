@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./IStorageManager.sol";
+import "./MerkleLib.sol";
 
 contract TestStorageManager is IStorageManager {
     mapping(uint256 => bytes) dataMap;
+    uint32 public constant SYSTEM_BLOCK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
 
     // Get a raw data from underlying storage.
     function getRaw(
@@ -14,8 +16,10 @@ contract TestStorageManager is IStorageManager {
         uint256 len
     ) external view override returns (bytes memory) {
         bytes memory data = dataMap[kvIdx];
-
-        require(hash == bytes24(keccak256(data)), "getRaw hash mismatch");
+        uint256 n = data.length / SYSTEM_BLOCK_SIZE;
+        uint256 nChunkBits = (n <= 1) ? 0 :
+                             BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
+        require(hash == MerkleLib.merkleRoot(data, SYSTEM_BLOCK_SIZE, nChunkBits), "getRaw hash mismatch");
 
         if (off >= data.length) {
             return bytes("");

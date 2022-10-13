@@ -3,6 +3,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const crypto = require("crypto");
 
+var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
 describe("MerkleLib Test", function () {
   it("full zero data verify", async function () {
     const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
@@ -30,6 +31,20 @@ describe("MerkleLib Test", function () {
       let chunkData = data.slice(i * 64, (i + 1) * 64);
       expect(await ml.verify(chunkData, i, root, proof)).to.equal(true);
     }
+  });
+
+  it("8K data testing", async function () {
+    // 4K as chunk
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
+
+    const d = crypto.randomBytes(4096 * 2);
+    const root = await ml.merkleRoot(d, 4096, 1);
+    const leftSliceProof = await ml.getProof(d,4096,1,0);
+    expect(await ml.verify(d.slice(0,4096), 0, root, leftSliceProof)).to.be.true;
+    const rightSliceProof = await ml.getProof(d,4096,1,1);
+    expect(await ml.verify(d.slice(4096,8192), 1, root, rightSliceProof)).to.be.true;
   });
 
   it("partial random data verify0", async function () {

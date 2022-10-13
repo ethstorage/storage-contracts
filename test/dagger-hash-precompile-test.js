@@ -1,10 +1,11 @@
 const { web3 } = require("hardhat");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const crypto = require("crypto");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
 var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
-
+const testKey = "0x0000000000000000000000000000000000000000000000000000000000000001"
 describe("DaggerHash Test", function () {
   it("small-value", async function () {
     const StorageManager = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
@@ -17,15 +18,17 @@ describe("DaggerHash Test", function () {
     const kv = await DecentralizedKV.deploy(sm.address, 4, dg.address);
     await kv.deployed();
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344");
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4)).to.equal(
+    await kv.put(testKey, "0x11223344");
+    expect(await kv.get(testKey, 0, 4)).to.equal(
       "0x11223344"
     );
 
-    expect(await kv.checkDaggerHash("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344"))
-      .to.be.true;
+    // TODO: Not apply for current PhysAddr extending 32 bytes
+    //expect(await kv.checkDaggerHash(testKey, "0x11223344"))
+    //  .to.be.true;
+    
     expect(
-      await kv.checkDaggerHashNormal("0x0000000000000000000000000000000000000000000000000000000000000001", "0x11223344")
+      await kv.checkDaggerHashNormal(testKey, "0x11223344")
     ).to.be.true;
   });
 
@@ -45,18 +48,20 @@ describe("DaggerHash Test", function () {
       d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(j))]);
     }
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 4096)).to.equal(d);
+    await kv.put(testKey, d);
+    expect(await kv.get(testKey, 0, 4096)).to.equal(d);
 
-    expect(await kv.checkDaggerHash("0x0000000000000000000000000000000000000000000000000000000000000001", d)).to.be
-      .true;
-    expect(await kv.checkDaggerHashNormal("0x0000000000000000000000000000000000000000000000000000000000000001", d)).to
+    // TODO: Not apply for current PhysAddr extending 32 bytes
+    //expect(await kv.checkDaggerHash(testKey, d)).to.be
+    //  .true;
+
+    expect(await kv.checkDaggerHashNormal(testKey, d)).to
       .be.true;
 
     // Uncomment for gas report
-    await kv.checkDaggerHashNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    await kv.checkDaggerHashDirectNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    await kv.checkDaggerHashNormalNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
+    await kv.checkDaggerHashNonView(testKey, d);
+    await kv.checkDaggerHashDirectNonView(testKey, d);
+    await kv.checkDaggerHashNormalNonView(testKey, d);
   });
 
   it("8KB-value", async function () {
@@ -69,24 +74,28 @@ describe("DaggerHash Test", function () {
     const DecentralizedKV = await ethers.getContractFactory("TestKVWithDaggerHash");
     const kv = await DecentralizedKV.deploy(sm.address, 8192, dg.address);
     await kv.deployed();
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
 
-    let d = "0x";
-    let d32 = ethers.utils.keccak256(hexlify4(0));
-    for (let j = 0; j < 8192 / 32; j++) {
-      d = ethers.utils.hexConcat([d, d32]);
-    }
+    const data = crypto.randomBytes(4096 * 2)
+    const d = ethers.utils.hexlify(data);
+    await kv.put(testKey, d);
+    expect(await kv.get(testKey, 0, 8192)).to.equal(d);
 
-    await kv.put("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    expect(await kv.get("0x0000000000000000000000000000000000000000000000000000000000000001", 0, 8192)).to.equal(d);
-
-    expect(await kv.checkDaggerHash("0x0000000000000000000000000000000000000000000000000000000000000001", d)).to.be
-      .true;
-    expect(await kv.checkDaggerHashNormal("0x0000000000000000000000000000000000000000000000000000000000000001", d)).to
+    // TODO: Not apply for current PhysAddr extending 32 bytes
+    //expect(await kv.checkDaggerHash(testKey, d)).to.be
+    //  .true;
+    const root = await ml.merkleRoot(data, 4096, 1);
+    const leftSliceProof = await ml.getProof(data,4096,1,0);
+    const rightSliceProof = await ml.getProof(data,4096,1,1);
+    // A direct merkle tree verify
+    expect(await ml.verify(data.slice(0,4096), 0, root, leftSliceProof)).to.be.true;
+    expect(await ml.verify(data.slice(4096,8192), 1, root, rightSliceProof)).to.be.true;
+    // Via sysContract's method
+    expect(await kv.checkDaggerHashNormalMerkle(0, testKey, leftSliceProof, data.slice(0,4096))).to
       .be.true;
-
-    // Uncomment for gas report
-    await kv.checkDaggerHashNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    await kv.checkDaggerHashDirectNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
-    await kv.checkDaggerHashNormalNonView("0x0000000000000000000000000000000000000000000000000000000000000001", d);
+    expect(await kv.checkDaggerHashNormalMerkle(0, testKey, leftSliceProof, data.slice(0,4096))).to
+      .be.true;
   });
 });

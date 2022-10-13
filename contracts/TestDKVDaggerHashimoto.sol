@@ -30,9 +30,11 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         address miner,
         uint256 minedTs,
         uint256 nonce,
+        uint256[] memory checkIdList,
+        bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) public override {
-        return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, maskedData);
+        return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, checkIdList, proofsDim2, maskedData);
     }
 
     function hashimoto(
