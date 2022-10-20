@@ -247,7 +247,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             diffs[i] = MiningLib.expectedDiff(info, minedTs, targetIntervalSec, cutoff, diffAdjDivisor, minimumDiff);
             diff = diff + diffs[i];
 
-            hash0 = keccak256(abi.encode(hash0, shardId, infos[shardId].miningHash));
+            hash0 = keccak256(abi.encode(hash0, shardId, info.miningHash));
         }
     }
 
@@ -308,7 +308,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             shardLen,
             minedTs
         );
-        
+
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
         hash0 = _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
 
