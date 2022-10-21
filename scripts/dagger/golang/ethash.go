@@ -113,7 +113,12 @@ func makeHasher(h hash.Hash) hasher {
 	}
 	rh, ok := h.(readerHash)
 	if !ok {
-		panic("can't find Read method on hash")
+		return func(dest []byte, data []byte) {
+			h.Reset()
+			h.Write(data)
+			d := h.Sum([]byte{})
+			copy(dest, d)
+		}
 	}
 	outputLen := rh.Size()
 	return func(dest []byte, data []byte) {
@@ -143,7 +148,7 @@ func seedHash(block uint64) []byte {
 // algorithm from Strict Memory Hard Hashing Functions (2014). The output is a
 // set of 524288 64-byte values.
 // This method places the result into dest in machine byte order.
-func generateCache(dest []uint32, epoch uint64, seed []byte) {
+func generateCache(dest []uint32, epoch uint64, seed []byte, hashFn hasher) {
 	// Print some debug logs to allow analysis on low end devices
 	logger := log.New("epoch", epoch)
 
@@ -186,7 +191,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 		}
 	}()
 	// Create a hasher to reuse between invocations
-	keccak512 := makeHasher(sha3.NewLegacyKeccak512())
+	keccak512 := hashFn
 
 	// Sequentially produce the initial dataset
 	keccak512(cache, seed)
@@ -379,15 +384,22 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 // hashimoto aggregates data from the full dataset in order to produce our final
 // value for a particular header hash and nonce.
 func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32) []uint32) ([]byte, []byte) {
-	// Calculate the number of theoretical rows (we use one buffer nonetheless)
-	rows := uint32(size / mixBytes)
-
 	// Combine header+nonce into a 64 byte seed
 	seed := make([]byte, 40)
 	copy(seed, hash)
 	binary.LittleEndian.PutUint64(seed[32:], nonce)
 
 	seed = crypto.Keccak512(seed)
+
+	return hashimotoEx(seed, size, lookup)
+}
+
+// hashimoto aggregates data from the full dataset in order to produce our final
+// value for a particular header hash and nonce.
+func hashimotoEx(seed []byte, size uint64, lookup func(index uint32) []uint32) ([]byte, []byte) {
+	// Calculate the number of theoretical rows (we use one buffer nonetheless)
+	rows := uint32(size / mixBytes)
+
 	seedHead := binary.LittleEndian.Uint32(seed)
 
 	// Start the mix with replicated seed

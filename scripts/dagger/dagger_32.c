@@ -9,6 +9,8 @@
 #define CACHE_ROUND 3
 #define CACHE_ITEM(cache, idx) ((cache) + (idx) * HASH_BYTES)
 #define DATASET_PARENTS 256
+#define LOOP_ACCESSES 64
+#define MIX_BYTES 128
 
 unsigned char *generate_cache(uint64_t cache_size, unsigned char *seed, uint64_t seed_size) {
     unsigned char *cache = malloc(cache_size);
@@ -124,6 +126,35 @@ void calculate_mask_data(unsigned char *cache, uint64_t cache_size, uint64_t i, 
     return;
 }
 
+void hashimoto(unsigned char* hash, uint64_t size, unsigned char* dataset, uint32_t* mix) {
+    uint32_t *dataset_u32 = (uint32_t *)dataset;
+    uint32_t *hash_u32 = (uint32_t *)hash;
+
+    // replicate hash
+    for (uint64_t i = 0; i < HASH_BYTES / 4; i++) {
+        mix[i] = hash_u32[i];
+        mix[i + HASH_BYTES / 4] = hash_u32[i];
+    }
+
+    uint32_t seedHead = mix[0];
+    uint32_t mix_len = MIX_BYTES / 4;
+    uint32_t rows = size / MIX_BYTES;
+
+    // Mix in random dataset nodes
+	for (uint32_t i = 0; i < LOOP_ACCESSES; i++) {
+		uint64_t parent = fnv32(i^seedHead, mix[i%mix_len]) % rows;
+		for (uint32_t j = 0; j < mix_len; j ++) {
+            mix[j] = fnv32(mix[j], dataset_u32[parent * mix_len + j]);
+		}
+	}
+
+    for (uint32_t i = 0; i < mix_len; i += 4) {
+        mix[i / 4] = fnv32(fnv32(fnv32(mix[i], mix[i+1]), mix[i+2]), mix[i+3]);
+    }
+
+    return;
+}
+
 void simple_verify() {
     unsigned char seed[] = "123";
 
@@ -179,11 +210,11 @@ void self_verify() {
     free(data0);
     free(data1);
 
-    printf("self_verify() passed\n");
+    printf("self_hashimoto_verify() passed\n");
     return;
 }
 
-void benchmark() {
+void benchmark_generate_data_item() {
     unsigned char seed[] = "123";
     struct timespec start, end;
     struct timespec startb, endb;
@@ -223,10 +254,79 @@ void benchmark() {
     return;
 }
 
+void simple_hashimoto_verify() {
+    unsigned char seed[] = "123";
+
+    unsigned char *init_hash = malloc(HASH_BYTES);
+    unsigned char *mix = malloc(HASH_BYTES * 2);
+    SHA512(seed, sizeof(seed) - 1, init_hash);
+
+    unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
+
+    hashimoto(init_hash, 1024, cache, mix);
+
+    printf("expect: a35905961116a162bd58f9bf83ea40198b7cb2469ddb6844df1cbc9109f194aa\n");
+    printf("actual: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%02x", mix[i]);
+    }
+    printf("\n");
+
+    return;
+}
+
+void benchmark_hashimoto() {
+    unsigned char seed[] = "123";
+    struct timespec start, end;
+    struct timespec startb, endb;
+
+    uint64_t cache_size = 83886080; // 80 MB
+    printf("Generating cache with size %llu\n", cache_size);
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    unsigned char *cache = generate_cache(cache_size, seed, sizeof(seed) - 1);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    printf("Done! Took %0.2fs\n", (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9);
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    clock_gettime(CLOCK_MONOTONIC, &startb);
+    unsigned char *init_hash = malloc(HASH_BYTES);
+    unsigned char *mix = malloc(HASH_BYTES * 2);
+
+    uint64_t items = 1000000;
+    for (uint64_t idx = 0; idx < items; idx ++) {
+        SHA512(&idx, 8, init_hash);
+        hashimoto(init_hash, cache_size, cache, mix);
+
+        if (idx % 10000 != 0) {
+            continue;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &endb);
+        double used_time = (endb.tv_sec - startb.tv_sec) + (endb.tv_nsec - startb.tv_nsec) / 1e9;
+        startb = endb;
+
+        printf("rate %0.2f H/s, item %llu, ", 10000 / used_time, idx);
+        for (int i = 0; i < 32; i++) {
+            printf("%02x", mix[i]);
+        }
+        printf("\n");
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double used_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Hash done! Took %0.2fs, rate %0.2f H/s\n", used_time, items / used_time);
+
+    free(init_hash);
+    free(mix);
+
+    return;
+}
+
 int main(int argc, char *argv[]) {
     simple_verify();
     self_verify();
-    benchmark();
+    simple_hashimoto_verify();
+    // benchmark_generate_data_item();
+    benchmark_hashimoto();
     return (0);
 }
 
