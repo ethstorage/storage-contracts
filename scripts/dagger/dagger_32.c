@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <immintrin.h>
+
 #include "sha512.c"
 
 #define HASH_BYTES 64
@@ -143,10 +145,82 @@ void hashimoto(unsigned char* hash, uint64_t size, unsigned char* dataset, uint3
     // Mix in random dataset nodes
 	for (uint32_t i = 0; i < LOOP_ACCESSES; i++) {
 		uint64_t parent = fnv32(i^seedHead, mix[i%mix_len]) % rows;
-		for (uint32_t j = 0; j < mix_len; j ++) {
+        for (uint32_t j = 0; j < mix_len; j ++) {
             mix[j] = fnv32(mix[j], dataset_u32[parent * mix_len + j]);
-		}
+        }
 	}
+
+    for (uint32_t i = 0; i < mix_len; i += 4) {
+        mix[i / 4] = fnv32(fnv32(fnv32(mix[i], mix[i+1]), mix[i+2]), mix[i+3]);
+    }
+
+    return;
+}
+
+void hashimoto_avx(unsigned char* hash, uint64_t size, unsigned char* dataset, uint32_t* mix) {
+    uint32_t *dataset_u32 = (uint32_t *)dataset;
+    uint32_t *hash_u32 = (uint32_t *)hash;
+
+    // replicate hash
+    for (uint64_t i = 0; i < HASH_BYTES / 4; i++) {
+        mix[i] = hash_u32[i];
+        mix[i + HASH_BYTES / 4] = hash_u32[i];
+    }
+
+    __m256i m = _mm256_set1_epi32(0x01000193);
+    __m256i mix0 = _mm256_load_si256(mix);
+    __m256i mix1 = _mm256_load_si256(mix+8);
+    __m256i mix2 = _mm256_load_si256(mix+16);
+    __m256i mix3 = _mm256_load_si256(mix+24);
+
+    unsigned char *mix_bytes0 = mix;
+    unsigned char *mix_bytes1 = mix+8;
+    unsigned char *mix_bytes2 = mix+16;
+    unsigned char *mix_bytes3 = mix+24;
+
+    uint32_t seedHead = mix[0];
+    uint32_t mix_len = MIX_BYTES / 4;
+    uint32_t rows = size / MIX_BYTES;
+
+    // Mix in random dataset nodes
+	for (uint32_t i = 0; i < LOOP_ACCESSES; i++) {
+        uint32_t p = i % 32;
+        if (p < 8) {
+            _mm256_store_si256(mix_bytes0, mix0);
+        } else if (p < 16) {
+            _mm256_store_si256(mix_bytes1, mix1);
+        } else if (p < 24) {
+            _mm256_store_si256(mix_bytes2, mix2);
+        } else {
+            _mm256_store_si256(mix_bytes3, mix3);
+        }
+
+        uint64_t parent = fnv32(i^seedHead, mix[i%mix_len]) % rows;
+        uint32_t *dataset_u32_ptr = &dataset_u32[parent * mix_len];
+        // printf("%u\n", dataset_u32_ptr[0]);
+        unsigned char *dataset_bytes = dataset_u32_ptr;
+        __m256i c0 = _mm256_load_si256(dataset_bytes);
+        __m256i c1 = _mm256_load_si256(dataset_bytes+32);
+        __m256i c2 = _mm256_load_si256(dataset_bytes+64);
+        __m256i c3 = _mm256_load_si256(dataset_bytes+96);
+
+        mix0 = _mm256_mullo_epi32(mix0, m);
+        mix0 = _mm256_xor_si256(mix0, c0);
+
+        mix1 = _mm256_mullo_epi32(mix1, m);
+        mix1 = _mm256_xor_si256(mix1, c1);
+
+        mix2 = _mm256_mullo_epi32(mix2, m);
+        mix2 = _mm256_xor_si256(mix2, c2);
+
+        mix3 = _mm256_mullo_epi32(mix3, m);
+        mix3 = _mm256_xor_si256(mix3, c3);
+    }
+
+    _mm256_store_si256(mix_bytes0, mix0);
+    _mm256_store_si256(mix_bytes1, mix1);
+    _mm256_store_si256(mix_bytes2, mix2);
+    _mm256_store_si256(mix_bytes3, mix3);
 
     for (uint32_t i = 0; i < mix_len; i += 4) {
         mix[i / 4] = fnv32(fnv32(fnv32(mix[i], mix[i+1]), mix[i+2]), mix[i+3]);
@@ -258,7 +332,7 @@ void simple_hashimoto_verify() {
     unsigned char seed[] = "123";
 
     unsigned char *init_hash = malloc(HASH_BYTES);
-    unsigned char *mix = malloc(HASH_BYTES * 2);
+    unsigned char *mix = aligned_alloc(32, HASH_BYTES * 2);
     SHA512(seed, sizeof(seed) - 1, init_hash);
 
     unsigned char *cache = generate_cache(1024, seed, sizeof(seed) - 1);
@@ -271,6 +345,16 @@ void simple_hashimoto_verify() {
         printf("%02x", mix[i]);
     }
     printf("\n");
+
+    hashimoto_avx(init_hash, 1024, cache, mix);
+    printf("actual: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%02x", mix[i]);
+    }
+    printf(" (avx) \n");
+
+    free(init_hash);
+    free(mix);
 
     return;
 }
@@ -290,12 +374,12 @@ void benchmark_hashimoto() {
     clock_gettime(CLOCK_MONOTONIC, &start);
     clock_gettime(CLOCK_MONOTONIC, &startb);
     unsigned char *init_hash = malloc(HASH_BYTES);
-    unsigned char *mix = malloc(HASH_BYTES * 2);
+    unsigned char *mix = aligned_alloc(32, HASH_BYTES * 2);
 
     uint64_t items = 1000000;
     for (uint64_t idx = 0; idx < items; idx ++) {
         SHA512(&idx, 8, init_hash);
-        hashimoto(init_hash, cache_size, cache, mix);
+        hashimoto_avx(init_hash, cache_size, cache, mix);
 
         if (idx % 10000 != 0) {
             continue;
