@@ -1,6 +1,7 @@
 const { web3 } = require("hardhat");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { crypto } = require("crypto");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
 var padRight32 = (x) => x.padEnd(66, "0");
@@ -368,7 +369,7 @@ describe("Full cycle of mining procedure", function () {
     }
     expect(LIMIT).to.be.above(count);
 
-    await kv.mine(0,0,wallet.address,mineTs,nonce,[0],[[]],maskedData);
+    await kv.mineDKV(0,0,wallet.address,mineTs,nonce,[[]],maskedData);
     
   });
 });

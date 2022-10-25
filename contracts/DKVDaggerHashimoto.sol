@@ -206,7 +206,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     ) internal view returns (bytes32) {
         /* Assumption check */
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
-        if (randomChecks != 0) require(maskedData[0].length <= SYSTEM_BLOCK_SIZE, "too large data uploaded");
+        if (randomChecks != 0) require(maskedData[0].length <= CHUNK_SIZE, "too large data uploaded");
 
         uint256 maxKvSize = 1 << maxKvSizeBits;
         uint256 rows = 1 << (shardEntryBits + shardLenBits);
@@ -228,6 +228,30 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         return hash0;
     }
 
+    /* Helper function to avoid stack to deep error */
+    function _generateKVIdx(
+        bytes32 hash0,
+        uint256 startShardId,
+        uint256 shardLenBits
+    ) internal view returns (uint256) {
+        uint256 rows = 1 << (shardEntryBits + shardLenBits);
+        uint256 parent = uint256(hash0) % rows;
+        uint256 kvIdx = parent + (startShardId << shardEntryBits);
+        return kvIdx;
+    }
+
+    function _generateChunkIdx(
+        bytes32 hash0
+    ) internal view returns (uint256) {
+        require((CHUNK_SIZE != 0) && ((CHUNK_SIZE & (CHUNK_SIZE - 1)) == 0), "CHUNK_SIZE invalid");
+        uint256 maxKvSize = 1 << maxKvSizeBits;
+        uint256 chunksPerKVBlock = maxKvSize / CHUNK_SIZE;
+        /* If maxKvSize is smaller than CHUNK_SIZE, early exit */
+        if (chunksPerKVBlock == 0) return 0;
+        uint256 chunkIdx = uint256(hash0) % chunksPerKVBlock;
+        return chunkIdx;
+    }
+
     /*
      * Run a modified hashimoto hash,
      * with Merkle inclusion proofs
@@ -236,22 +260,20 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLenBits,
         bytes32 hash0,
-        uint256[] memory checkIdList,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal view returns (bytes32) {
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
-        require(checkIdList.length == randomChecks, "proofs idx vs checks: length mismatch");
+        require(maskedData.length <= CHUNK_SIZE, "calldata too large");
         uint256 maxKvSize = 1 << maxKvSizeBits;
-        uint256 rows = 1 << (shardEntryBits + shardLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
             require(maskedData[i].length == maxKvSize, "invalid proof size");
-            uint256 parent = uint256(hash0) % rows;
-            uint256 kvIdx = parent + (startShardId << shardEntryBits);
+            uint256 kvIdx = _generateKVIdx(hash0, startShardId, shardLenBits);
+            uint256 chunkIdx = _generateChunkIdx(hash0);
             bytes memory data = maskedData[i];
-            require(systemContract.checkDaggerDataWithProof(checkIdList[i], 
+            require(systemContract.checkDaggerDataWithProof(chunkIdx, 
                     kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
                     "invalid access proof");
 
@@ -340,7 +362,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         address miner,
         uint256 minedTs,
         uint256 nonce,
-        uint256[] memory checkIdList,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal {
@@ -353,7 +374,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         );
         
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, checkIdList, proofsDim2, maskedData);
+        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, proofsDim2, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
@@ -365,6 +386,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     }
 
     // We allow cross mine multiple shards by aggregating their difficulties.
+    // For some reasons, we never use checkIdList but if we remove it, we will get
+    // a `Stack too deap error`
     function mine(
         uint256 startShardId,
         uint256 shardLenBits,
@@ -375,6 +398,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) public virtual {
-        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, checkIdList, proofsDim2, maskedData);
+        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, proofsDim2, maskedData);
     }
 }

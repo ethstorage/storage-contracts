@@ -23,9 +23,8 @@ describe("DaggerHash Test", function () {
       "0x11223344"
     );
 
-    // TODO: Not apply for current PhysAddr extending 32 bytes
-    //expect(await kv.checkDaggerHash(testKey, "0x11223344"))
-    //  .to.be.true;
+    expect(await kv.checkDaggerHash(testKey, "0x11223344"))
+      .to.be.true;
     
     expect(
       await kv.checkDaggerHashNormal(testKey, "0x11223344")
@@ -51,9 +50,8 @@ describe("DaggerHash Test", function () {
     await kv.put(testKey, d);
     expect(await kv.get(testKey, 0, 4096)).to.equal(d);
 
-    // TODO: Not apply for current PhysAddr extending 32 bytes
-    //expect(await kv.checkDaggerHash(testKey, d)).to.be
-    //  .true;
+    expect(await kv.checkDaggerHash(testKey, d)).to.be
+      .true;
 
     expect(await kv.checkDaggerHashNormal(testKey, d)).to
       .be.true;
@@ -83,9 +81,6 @@ describe("DaggerHash Test", function () {
     await kv.put(testKey, d);
     expect(await kv.get(testKey, 0, 8192)).to.equal(d);
 
-    // TODO: Not apply for current PhysAddr extending 32 bytes
-    //expect(await kv.checkDaggerHash(testKey, d)).to.be
-    //  .true;
     const root = await ml.merkleRoot(data, 4096, 1);
     const leftSliceProof = await ml.getProof(data,4096,1,0);
     const rightSliceProof = await ml.getProof(data,4096,1,1);
@@ -95,7 +90,7 @@ describe("DaggerHash Test", function () {
     // Via sysContract's method
     expect(await kv.checkDaggerHashNormalMerkle(0, testKey, leftSliceProof, data.slice(0,4096))).to
       .be.true;
-    expect(await kv.checkDaggerHashNormalMerkle(0, testKey, leftSliceProof, data.slice(0,4096))).to
+    expect(await kv.checkDaggerHashNormalMerkle(1, testKey, rightSliceProof, data.slice(4096,4096*2))).to
       .be.true;
   });
 });

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./TestDecentralizedKV.sol";
 import "./CallerLibraries.sol";
-import "hardhat/console.sol";
 
 contract TestDaggerHashPrecompile {
     uint256 immutable maxKvSize;
@@ -50,9 +49,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         assembly {
             paddrValue := sload(paddr.slot)
         }
-        // This optimization is only working for we have a PhyAddr with byte32 or less length
-        // To use Merkle tree commitment, we extend a hash field from Bytes24 to Bytes32
-        // This one immediately goes invalid 
+
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
     }
 
@@ -65,9 +62,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         assembly {
             paddrValue := sload(paddr.slot)
         }
-        // This optimization is only working for we have a PhyAddr with byte32 or less length
-        // To use Merkle tree commitment, we extend a hash field from Bytes24 to Bytes32
-        // This one immediately goes invalid
+        
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
     }
 
@@ -76,7 +71,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
 
-        return paddr.hash == keccak256(maskedData);
+        return paddr.hash == bytes24(keccak256(maskedData));
     }
 
     function checkDaggerHashNormal(bytes32 key, bytes memory maskedData) public view returns (bool) {

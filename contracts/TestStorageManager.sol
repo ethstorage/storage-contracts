@@ -6,7 +6,7 @@ import "./MerkleLib.sol";
 
 contract TestStorageManager is IStorageManager {
     mapping(uint256 => bytes) dataMap;
-    uint32 public constant SYSTEM_BLOCK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
+    uint32 public constant CHUNK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
 
     // Get a raw data from underlying storage.
     function getRaw(
@@ -16,10 +16,11 @@ contract TestStorageManager is IStorageManager {
         uint256 len
     ) external view override returns (bytes memory) {
         bytes memory data = dataMap[kvIdx];
-        uint256 n = data.length / SYSTEM_BLOCK_SIZE;
+        uint256 n = data.length / CHUNK_SIZE;
         uint256 nChunkBits = (n <= 1) ? 0 :
                              BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
-        require(hash == MerkleLib.merkleRoot(data, SYSTEM_BLOCK_SIZE, nChunkBits), "getRaw hash mismatch");
+        bytes24 dataHash = bytes24(MerkleLib.merkleRoot(data, CHUNK_SIZE, nChunkBits));
+        require(hash == dataHash, "getRaw hash mismatch");
 
         if (off >= data.length) {
             return bytes("");

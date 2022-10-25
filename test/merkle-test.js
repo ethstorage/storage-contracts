@@ -125,7 +125,7 @@ describe("MerkleLib Test", function () {
     let proof = await ml.getProof(data, 64, 3, 0);
     expect(await ml.verify(data.slice(0,64), 0, root, proof)).to.equal(true);
     // out of bound index
-    expect(await ml.verify(data.slice(0,64), 8, root, proof)).to.equal(false);
-    expect(await ml.verify(data.slice(0,64), 10, root, proof)).to.equal(false);
+    await expect(ml.verify(data.slice(0,64), 8, root, proof)).to.be.revertedWith("chunkId overflows");
+    await expect(ml.verify(data.slice(0,64), 10, root, proof)).to.be.revertedWith("chunkId overflows");
   });
 });

@@ -46,7 +46,7 @@ library MerkleLib {
     ) internal pure returns (bool) {
         bytes32 hash = dataHash;
         uint256 nChunkBits = proofs.length;
-        if (chunkIdx >= (1 << nChunkBits)) return false;
+        require(chunkIdx < (1 << nChunkBits), "chunkId overflows");
         for (uint256 i = 0; i < nChunkBits; i++) {
             if (chunkIdx % 2 == 0) {
                 hash = keccak256(abi.encode(hash, proofs[i]));
@@ -55,7 +55,13 @@ library MerkleLib {
             }
             chunkIdx = chunkIdx / 2;
         }
-        return hash == root;
+        /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
+         *         are valid. We only validate that part.
+         * With no doubt, it introduces some vulnerability compared 
+         * with a standard Merkle validation. It is a trade-off,
+         * if we want to put all meta data into a single bytes32(opcode length)
+         */
+        return bytes24(hash) == bytes24(root);
     }
 
     function getProof(
