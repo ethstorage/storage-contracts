@@ -265,14 +265,16 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     ) internal view returns (bytes32) {
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
-        require(maskedData.length <= CHUNK_SIZE, "calldata too large");
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         uint256 maxKvSize = 1 << maxKvSizeBits;
 
         for (uint256 i = 0; i < randomChecks; i++) {
-            require(maskedData[i].length == maxKvSize, "invalid proof size");
+            require(maskedData[i].length <= CHUNK_SIZE, "invalid proof size");
             uint256 kvIdx = _generateKVIdx(hash0, startShardId, shardLenBits);
             uint256 chunkIdx = _generateChunkIdx(hash0);
             bytes memory data = maskedData[i];
+            /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
+             *         The difficulty should increase intrinsically */
             require(systemContract.checkDaggerDataWithProof(chunkIdx, 
                     kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
                     "invalid access proof");
