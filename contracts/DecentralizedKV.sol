@@ -11,8 +11,9 @@ contract DecentralizedKV {
     uint256 public immutable dcfFactor;
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
+    uint256 public immutable chunkSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
-    uint32 public constant CHUNK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
+    uint256 public constant DEFAULT_CHUNK_SIZE_BITS = 12; // 4K bytes is normal SSD minimal fetchable size
 
     IStorageManager public immutable storageManager;
 
@@ -42,15 +43,16 @@ contract DecentralizedKV {
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
         dcfFactor = _dcfFactor;
+        chunkSize = _maxKvSize < (1 << DEFAULT_CHUNK_SIZE_BITS) ? _maxKvSize : (1 << DEFAULT_CHUNK_SIZE_BITS);
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {
         return BinaryRelated.pow(fp, n);
     }
 
-    function generateChunkBits(uint256 dataLen) internal pure returns (uint256) {
-        uint256 n = dataLen / CHUNK_SIZE;
-        return (n <= 1) ? 0 : BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
+    function generateChunkBits(uint256 dataLen) internal view returns (uint256) {
+        uint256 n = dataLen / chunkSize;
+        return BinaryRelated.getBitsLen(n);
     }
 
     // Evaluate payment from [t0, t1) seconds
@@ -103,7 +105,7 @@ contract DecentralizedKV {
         }
         paddr.kvSize = uint24(data.length);
         uint256 nChunkBits = generateChunkBits(data.length);
-        paddr.hash = bytes24(MerkleLib.merkleRoot(data, CHUNK_SIZE, nChunkBits));
+        paddr.hash = bytes24(MerkleLib.merkleRoot(data, chunkSize, nChunkBits));
         kvMap[skey] = paddr;
 
         // Weird that cannot call precompiled contract like this (solidity issue?)
@@ -199,7 +201,7 @@ contract DecentralizedKV {
         }
 
         uint256 nChunkBits = generateChunkBits(data.length);
-        bytes24 dataHash = bytes24(MerkleLib.merkleRoot(data, CHUNK_SIZE, nChunkBits));
+        bytes24 dataHash = bytes24(MerkleLib.merkleRoot(data, chunkSize, nChunkBits));
         return paddr.hash == dataHash;
     }
 }

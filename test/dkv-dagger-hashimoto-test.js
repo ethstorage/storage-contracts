@@ -386,29 +386,27 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
   const shardEntryBits = shardSizeBits - maxKvSizeBits;
   const verbose = false;
 
-  const LIMIT = 100;
+  const LIMIT = 10;
 
   const local_idx_2_key = x => ethers.utils.formatBytes32String(x.toString());
 
   /* Conduct a off-chain pre-check for gaining reward purpose */
-  function hashimoto_local(startShardId, shardLenBits, _hash0, maskedData, randomList, chunkIdArray, CHUNK_SIZE) {
+  function hashimoto_local(startShardId, shardLenBits, _hash0, maskedData, randomList, chunkIdArray, chunkLenBits) {
     const maxKvSize = 1 << maxKvSizeBits;
-    const chunksPerKVBlock = maxKvSize / CHUNK_SIZE;
-    const rows = 1 << (shardEntryBits + shardLenBits);
+    const rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
     let hash0 = _hash0;
     for (let i = 0; i < randomChecks; i++) {
         const parent = ethers.BigNumber.from(hash0).mod(rows).toNumber();
-        const kvIdx = parent + (startShardId << shardEntryBits);
-        const chunkId = chunksPerKVBlock ? 
-                        ethers.BigNumber.from(hash0).mod(chunksPerKVBlock).toNumber() :
-                        0;
+        const chunkOffset = parent + (startShardId << (shardEntryBits + chunkLenBits));
+        const kvIdx = chunkOffset >> chunkLenBits;
+        const chunkIdx = chunkOffset % (1 << chunkLenBits);
         if (verbose){
           console.log("hash is "+hash0);
           console.log("kvIdx %d -- desired randomList idx %d; chunkIdx %d -- desired id from array %d ", 
-                      kvIdx, randomList[i], chunkId, chunkIdArray[i]);
+                      kvIdx, randomList[i], chunkIdx, chunkIdArray[i]);
         }
         // in shard local data, index matches = data matches
-        if (kvIdx != randomList[i] || chunkId != chunkIdArray[i]) {
+        if (kvIdx != randomList[i] || chunkIdx != chunkIdArray[i]) {
           return [0, false];
         }
         hash0 = keccak256(concat([padRight32(ethers.utils.hexlify(hash0)), maskedData[i]]));
@@ -461,8 +459,9 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     const meta = await kv.calculateDiffAndInitHash(0,1,mineTs);
     const diff = meta.diff.toNumber();
     const nonce = 1;
-    const CHUNK_SIZE = await kv.CHUNK_SIZE();
-    const chunksPerKVBlock = (1 << maxKvSizeBits) / CHUNK_SIZE;
+    const CHUNK_SIZE = (await kv.chunkSize()).toNumber();
+    const chunkLenBits = (await kv.chunkLenBits()).toNumber();
+    if (verbose) console.log("chunkLenBits: " + chunkLenBits);
 
     let count = 0;
     let chunksIdxArrayPointer = 0;
@@ -488,7 +487,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
           dataSlice.push(dataList[x].slice(chunksIdxArrayPointer*CHUNK_SIZE,(chunksIdxArrayPointer+1)*CHUNK_SIZE)));
       chunkIdArray=[chunksIdxArrayPointer];
       
-      const ret = hashimoto_local(0, 0, h0, dataSlice, randomList, chunkIdArray, CHUNK_SIZE);
+      const ret = hashimoto_local(0, 0, h0, dataSlice, randomList, chunkIdArray, chunkLenBits);
       const success = ret[1];
       if (success) {
         const ret_hash0 = ret[0];
@@ -503,7 +502,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
       }
       // failed to search
       // increase the offset inside a KV block
-      chunksIdxArrayPointer = (chunksIdxArrayPointer+1) % chunksPerKVBlock;
+      chunksIdxArrayPointer = (chunksIdxArrayPointer+1) % (1 << chunkLenBits);
       // examine all chunks inside a KV block before move to next shards 
       if (0 == chunksIdxArrayPointer) count = count + 1;
     }
@@ -514,7 +513,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     for (let i = 0; i < randomChecks; i++) {
       const data = dataList[randomList[i]];
       const chunkIdx = chunkIdArray[i];
-      const proof = await ml.getProof(data, CHUNK_SIZE, Math.log2(chunksPerKVBlock), chunkIdx);
+      const proof = await ml.getProof(data, CHUNK_SIZE, chunkLenBits, chunkIdx);
       proofsDim2.push(proof)
     }
 

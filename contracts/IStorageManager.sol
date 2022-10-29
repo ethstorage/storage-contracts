@@ -80,4 +80,8 @@ library BinaryRelated {
         }
         return cnt-1;
     }
+
+    function getBitsLen(uint256 n) internal pure returns (uint256) {
+        return (n <= 1) ? 0 : BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
+    }
 }
