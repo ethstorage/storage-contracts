@@ -104,8 +104,7 @@ contract DecentralizedKV {
             lastKvIdx = lastKvIdx + 1;
         }
         paddr.kvSize = uint24(data.length);
-        uint256 nChunkBits = generateChunkBits(data.length);
-        paddr.hash = bytes24(MerkleLib.merkleRoot(data, chunkSize, nChunkBits));
+        paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
         // Weird that cannot call precompiled contract like this (solidity issue?)
@@ -200,8 +199,7 @@ contract DecentralizedKV {
             return false;
         }
 
-        uint256 nChunkBits = generateChunkBits(data.length);
-        bytes24 dataHash = bytes24(MerkleLib.merkleRoot(data, chunkSize, nChunkBits));
+        bytes24 dataHash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         return paddr.hash == dataHash;
     }
 }

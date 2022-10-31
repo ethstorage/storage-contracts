@@ -16,10 +16,7 @@ contract TestStorageManager is IStorageManager {
         uint256 len
     ) external view override returns (bytes memory) {
         bytes memory data = dataMap[kvIdx];
-        uint256 n = data.length / CHUNK_SIZE;
-        uint256 nChunkBits = (n <= 1) ? 0 :
-                             BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
-        bytes24 dataHash = bytes24(MerkleLib.merkleRoot(data, CHUNK_SIZE, nChunkBits));
+        bytes24 dataHash = bytes24(MerkleLib.merkleRootWithMinTree(data, CHUNK_SIZE));
         require(hash == dataHash, "getRaw hash mismatch");
 
         if (off >= data.length) {

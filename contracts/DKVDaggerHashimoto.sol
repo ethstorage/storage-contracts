@@ -211,7 +211,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     ) internal view returns (bytes32) {
         /* Assumption check */
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
-        require(maskedData[0].length <= chunkSize, "too large data uploaded");
+        require(maskedData[0].length == chunkSize, "too large data uploaded");
 
         uint256 maxKvSize = 1 << maxKvSizeBits;
         uint256 rows = 1 << (shardEntryBits + shardLenBits);
@@ -249,7 +249,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
-            require(maskedData[i].length <= chunkSize, "invalid proof size");
+            require(maskedData[i].length == chunkSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;

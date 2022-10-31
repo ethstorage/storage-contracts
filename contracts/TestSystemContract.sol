@@ -65,9 +65,13 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         bytes memory maskedData
     ) public pure override returns (bool) {
         bytes32 dataHash = keccak256(maskedData);
-        return MerkleLib.verify(dataHash,
-                                idx, /* Slice Id */
-                                kvHash, /*Merkle Tree Root*/
-                                proofs);
+        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, idx, proofs);
+        /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
+         *         are valid. We only validate that part.
+         * With no doubt, it introduces some vulnerability compared 
+         * with a standard Merkle validation. It is a trade-off,
+         * if we want to put all meta data into a single bytes32(opcode length)
+         */
+        return bytes24(rootFromProofs) == bytes24(kvHash);
     }
 }
