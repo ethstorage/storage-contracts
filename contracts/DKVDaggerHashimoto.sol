@@ -379,7 +379,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         address miner,
         uint256 minedTs,
         uint256 nonce,
-        uint256[] memory checkIdList,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) public virtual {

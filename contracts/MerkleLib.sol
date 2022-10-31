@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./BinaryRelated.sol";
-
 library MerkleLib {
     // Calculate the Merkle root of a given data with chunk size and number of maximum chunks in the data limit.
     function merkleRoot(
@@ -43,9 +41,8 @@ library MerkleLib {
         bytes memory data,
         uint256 chunkSize
     ) internal pure returns (bytes32) {
-        uint256 n = (data.length + chunkSize - 1) / chunkSize;
-        /* Round up to next 2^n */
-        uint256 nChunks = (n <= 1) ? 1 : BinaryRelated.findNextPowerOf2(n);
+        uint256 nChunks = (data.length + chunkSize - 1) / chunkSize;
+        nChunks = nChunks < 1 ? 1 : nChunks;
         bytes32[] memory nodes = new bytes32[](nChunks);
         for (uint256 i = 0; i < nChunks; i++) {
             bytes32 hash;
@@ -63,7 +60,7 @@ library MerkleLib {
             }
             nodes[i] = hash;
         }
-        n = nChunks;
+        uint256 n = nChunks;
         while (n != 1) {
             for (uint256 i = 0; i < n / 2; i++) {
                 nodes[i] = keccak256(abi.encode(nodes[i * 2], nodes[i * 2 + 1]));

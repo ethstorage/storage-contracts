@@ -11,7 +11,7 @@ contract TestDaggerHashPrecompile {
         maxKvSize = _maxKvSize;
     }
 
-    fallback (bytes calldata data) external returns (bytes memory) {
+    fallback(bytes calldata data) external returns (bytes memory) {
         require(data.length == maxKvSize + 32, "incorrect data size");
         bytes memory maskedData = data;
         bytes32 paddr;
@@ -62,7 +62,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         assembly {
             paddrValue := sload(paddr.slot)
         }
-        
+
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
     }
 
@@ -89,11 +89,12 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         return sysContract.checkDaggerData(paddr.kvIdx, paddr.hash, maskedData);
     }
 
-    function checkDaggerHashNormalMerkle(uint256 idx,
-                                         bytes32 key,
-                                         bytes32[] memory proofs,
-                                         bytes memory maskedData 
-    )public view returns (bool) {
+    function checkDaggerHashNormalMerkle(
+        uint256 idx,
+        bytes32 key,
+        bytes32[] memory proofs,
+        bytes memory maskedData
+    ) public view returns (bool) {
         // Now handling data larger than 4K
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];

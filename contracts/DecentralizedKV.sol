@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./IStorageManager.sol";
 import "./MerkleLib.sol";
+import "./BinaryRelated.sol";
 
 contract DecentralizedKV {
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
@@ -48,11 +49,6 @@ contract DecentralizedKV {
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {
         return BinaryRelated.pow(fp, n);
-    }
-
-    function generateChunkBits(uint256 dataLen) internal view returns (uint256) {
-        uint256 n = dataLen / chunkSize;
-        return BinaryRelated.getBitsLen(n);
     }
 
     // Evaluate payment from [t0, t1) seconds
