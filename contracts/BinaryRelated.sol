@@ -21,16 +21,4 @@ library BinaryRelated {
         return n << 1;
     }
 
-    function getExponentiation(uint256 n) internal pure returns (uint256) {
-        uint256 cnt = 0;
-        while(n != 0) {
-            n = n >> 1;
-            cnt++;
-        }
-        return cnt-1;
-    }
-
-    function getBitsLen(uint256 n) internal pure returns (uint256) {
-        return (n <= 1) ? 0 : BinaryRelated.getExponentiation(BinaryRelated.findNextPowerOf2(n));
-    }
 }
