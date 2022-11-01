@@ -14,7 +14,6 @@ contract DecentralizedKV {
     uint256 public immutable maxKvSize;
     uint256 public immutable chunkSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
-    uint256 public constant DEFAULT_CHUNK_SIZE_BITS = 12; // 4K bytes is normal SSD minimal fetchable size
 
     IStorageManager public immutable storageManager;
 
