@@ -10,6 +10,7 @@ import "./MiningLib.sol";
 contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     struct Config {
         uint256 maxKvSizeBits;
+        uint256 chunkSizeBits;
         uint256 shardSizeBits;
         uint256 randomChecks;
         uint256 minimumDiff;
@@ -42,18 +43,19 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
+                        _startTime, _storageCost, _dcfFactor)
     {
         /* Assumptions */
         require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
+        require(_config.maxKvSizeBits >= _config.chunkSizeBits, "maxKvSize too small");
         require(_config.randomChecks > 0, "At least one checkpoint needed");
 
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
         shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
-        chunkLenBits = _config.maxKvSizeBits < DEFAULT_CHUNK_SIZE_BITS ?
-                       0 : _config.maxKvSizeBits - DEFAULT_CHUNK_SIZE_BITS;
+        chunkLenBits = _config.maxKvSizeBits - _config.chunkSizeBits;
         randomChecks = _config.randomChecks;
         minimumDiff = _config.minimumDiff;
         targetIntervalSec = _config.targetIntervalSec;

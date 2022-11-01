@@ -41,8 +41,8 @@ library MerkleLib {
         bytes memory data,
         uint256 chunkSize
     ) internal pure returns (bytes32) {
+        if (data.length == 0) return bytes32(0);
         uint256 nChunks = (data.length + chunkSize - 1) / chunkSize;
-        nChunks = nChunks < 1 ? 1 : nChunks;
         bytes32[] memory nodes = new bytes32[](nChunks);
         for (uint256 i = 0; i < nChunks; i++) {
             bytes32 hash;

@@ -35,8 +35,9 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
     constructor(
         ISystemContractDaggerHashimoto _storageManager,
         uint256 _maxKvSize,
+        uint256 _chunkSize,
         address _daggerHashAddr
-    ) TestDecentralizedKV(_storageManager, _maxKvSize, 0, 0, 0) {
+    ) TestDecentralizedKV(_storageManager, _maxKvSize, _chunkSize, 0, 0, 0) {
         sysContract = _storageManager;
         daggerHashAddr = _daggerHashAddr;
     }

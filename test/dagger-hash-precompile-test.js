@@ -15,7 +15,7 @@ describe("DaggerHash Test", function () {
     const dg = await TestDaggerHashPrecompile.deploy(4);
     await dg.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestKVWithDaggerHash");
-    const kv = await DecentralizedKV.deploy(sm.address, 4, dg.address);
+    const kv = await DecentralizedKV.deploy(sm.address, 4, 4, dg.address);
     await kv.deployed();
 
     await kv.put(testKey, "0x11223344");
@@ -39,7 +39,7 @@ describe("DaggerHash Test", function () {
     const dg = await TestDaggerHashPrecompile.deploy(4096);
     await dg.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestKVWithDaggerHash");
-    const kv = await DecentralizedKV.deploy(sm.address, 4096, dg.address);
+    const kv = await DecentralizedKV.deploy(sm.address, 4096, 4096, dg.address);
     await kv.deployed();
 
     let d = "0x";
@@ -70,7 +70,7 @@ describe("DaggerHash Test", function () {
     const dg = await TestDaggerHashPrecompile.deploy(8192);
     await dg.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestKVWithDaggerHash");
-    const kv = await DecentralizedKV.deploy(sm.address, 8192, dg.address);
+    const kv = await DecentralizedKV.deploy(sm.address, 8192, 4096, dg.address);
     await kv.deployed();
     const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
     const ml = await MerkleLib.deploy();

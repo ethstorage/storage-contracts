@@ -24,7 +24,7 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         return _preparePutWithTimestamp(currentTimestamp);
     }
 
-    function mineDKV(
+    function mine(
         uint256 startShardId,
         uint256 shardLen,
         address miner,
@@ -32,7 +32,7 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         uint256 nonce,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
-    ) public {
+    ) public override{
         return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, proofsDim2, maskedData);
     }
 

@@ -23,7 +23,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 1 random access
     const kv = await MinabledKV.deploy(
-      [6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
+      [6, 6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -53,7 +53,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 2 random access
     const kv = await MinabledKV.deploy(
-      [6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
+      [6, 6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -86,7 +86,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 4096 bytes per data, 32 entries in shard, 16 random access
     const kv = await MinabledKV.deploy(
-      [12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
+      [12, 12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -154,7 +154,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 4096 bytes per data, 32 entries in shard, 16 random access
     const kv = await MinabledKV.deploy(
-      [12, 17, 3, 0, 60, 40, 1024, 0, sc.address],
+      [12, 12, 17, 3, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -201,7 +201,7 @@ describe("Basic Func Test", function () {
     const sc = await SystemContract.deploy();
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    const kv = await MinabledKV.deploy([5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
+    const kv = await MinabledKV.deploy([5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
     await kv.deployed();
 
     let m0 = await kv.calculateDiffAndInitHash(0, 1, 5);
@@ -220,6 +220,7 @@ describe("Basic Func Test", function () {
 
 describe("Full cycle of mining procedure", function () {
   const maxKvSizeBits = 6;
+  const chunkSizeBits = 6;
   const shardSizeBits = 10;
   const randomChecks = 1;
   const minimumDiff = 1;
@@ -295,7 +296,7 @@ describe("Full cycle of mining procedure", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 16 entries in shard, 4 random access
     const kv = await MinabledKV.deploy(
-      [maxKvSizeBits, shardSizeBits, randomChecks, minimumDiff, 
+      [maxKvSizeBits, chunkSizeBits, shardSizeBits, randomChecks, minimumDiff, 
        targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
       0, //startTime
       0, //storageCost
@@ -369,13 +370,14 @@ describe("Full cycle of mining procedure", function () {
     }
     expect(LIMIT).to.be.above(count);
 
-    await kv.mineDKV(0,0,wallet.address,mineTs,nonce,[[]],maskedData);
+    await kv.mine(0,0,wallet.address,mineTs,nonce,[[]],maskedData);
     
   });
 });
 
 describe("Full cycle of mining procedure with Merkle proof", function () {
   const maxKvSizeBits = 13; // 4K x 2
+  const chunkSizeBits = 12; // 4K
   const shardSizeBits = 14; // 2 blocks per shard
   const randomChecks = 1;
   const minimumDiff = 1;
@@ -430,7 +432,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 32KB per KV block, 4 entries in shard, 1 random access
     const kv = await MinabledKV.deploy(
-      [maxKvSizeBits, shardSizeBits, randomChecks, minimumDiff, 
+      [maxKvSizeBits, chunkSizeBits, shardSizeBits, randomChecks, minimumDiff, 
        targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
       0, //startTime
       0, //storageCost
@@ -514,10 +516,10 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
       const data = dataList[randomList[i]];
       const chunkIdx = chunkIdArray[i];
       const proof = await ml.getProof(data, CHUNK_SIZE, chunkLenBits, chunkIdx);
-      proofsDim2.push(proof)
+      proofsDim2.push(proof);
     }
 
-    await kv.mineDKV(0,0,wallet.address,mineTs,nonce,proofsDim2,maskedData);
+    await kv.mine(0,0,wallet.address,mineTs,nonce,proofsDim2,maskedData);
     
   });
 });

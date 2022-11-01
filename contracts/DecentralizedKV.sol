@@ -35,6 +35,7 @@ contract DecentralizedKV {
     constructor(
         IStorageManager _storageManager,
         uint256 _maxKvSize,
+        uint256 _chunkSize,
         uint256 _startTime,
         uint256 _storageCost,
         uint256 _dcfFactor
@@ -44,7 +45,9 @@ contract DecentralizedKV {
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
         dcfFactor = _dcfFactor;
-        chunkSize = _maxKvSize < (1 << DEFAULT_CHUNK_SIZE_BITS) ? _maxKvSize : (1 << DEFAULT_CHUNK_SIZE_BITS);
+        chunkSize = _chunkSize;
+        require(_chunkSize <= _maxKvSize, "KV: size mismatch");
+        require((_chunkSize != 0) && ((_chunkSize & (_chunkSize - 1)) == 0), "chunkSize aligned with 2^n");
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {

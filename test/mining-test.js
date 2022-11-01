@@ -15,7 +15,7 @@ describe("Basic Func Test", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -52,7 +52,7 @@ describe("Basic Func Test", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [12, 31, 20, 0, 60, 40, 1024, 0, sc.address],
+      [12, 12, 31, 20, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -79,7 +79,7 @@ describe("Basic Func Test", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -133,7 +133,7 @@ describe("Basic Func Test", function () {
     const sc = await SystemContract.deploy(32);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
-    const kv = await MinabledKV.deploy([5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
+    const kv = await MinabledKV.deploy([5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
     await kv.deployed();
 
     let m0 = await kv.calculateDiffAndInitHash(0, 1, 5);
@@ -160,7 +160,7 @@ describe("rewardMiner", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
       5,
       "1000000000000000000", // for all
       "170141183460469231731687303715884105728", // 0.5
@@ -193,7 +193,7 @@ describe("rewardMiner", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
       5,
       "1000000000000000000", // for all
       "170141183460469231731687303715884105728", // 0.5
@@ -263,7 +263,7 @@ describe("rewardMiner", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
       5,
       "1000000000000000000", // for all
       "170141183460469231731687303715884105728", // 0.5
@@ -296,7 +296,7 @@ describe("rewardMiner", function () {
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
-      [5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
+      [5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address],
       100,
       "1000000000000000000", // for all
       "340282365784068676928457747575078800565", // 0.5
