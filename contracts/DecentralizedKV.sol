@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./IStorageManager.sol";
+import "./MerkleLib.sol";
+import "./BinaryRelated.sol";
 
 contract DecentralizedKV {
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
@@ -10,6 +12,7 @@ contract DecentralizedKV {
     uint256 public immutable dcfFactor;
     uint256 public immutable startTime;
     uint256 public immutable maxKvSize;
+    uint256 public immutable chunkSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
 
     IStorageManager public immutable storageManager;
@@ -17,7 +20,7 @@ contract DecentralizedKV {
     struct PhyAddr {
         /* Internal address seeking */
         uint40 kvIdx;
-        /* Block Size. aligned with 2^n */
+        /* Block Size */
         uint24 kvSize;
         /* Commitment */
         bytes24 hash;
@@ -31,6 +34,7 @@ contract DecentralizedKV {
     constructor(
         IStorageManager _storageManager,
         uint256 _maxKvSize,
+        uint256 _chunkSize,
         uint256 _startTime,
         uint256 _storageCost,
         uint256 _dcfFactor
@@ -40,19 +44,13 @@ contract DecentralizedKV {
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
         dcfFactor = _dcfFactor;
+        chunkSize = _chunkSize;
+        require(_chunkSize <= _maxKvSize, "KV: size mismatch");
+        require((_chunkSize != 0) && ((_chunkSize & (_chunkSize - 1)) == 0), "chunkSize aligned with 2^n");
     }
 
     function pow(uint256 fp, uint256 n) internal pure returns (uint256) {
-        // 1.0 in Q128.128
-        uint256 v = 1 << 128;
-        while (n != 0) {
-            if ((n & 1) == 1) {
-                v = (v * fp) >> 128;
-            }
-            fp = (fp * fp) >> 128;
-            n = n / 2;
-        }
-        return v;
+        return BinaryRelated.pow(fp, n);
     }
 
     // Evaluate payment from [t0, t1) seconds
@@ -104,7 +102,7 @@ contract DecentralizedKV {
             lastKvIdx = lastKvIdx + 1;
         }
         paddr.kvSize = uint24(data.length);
-        paddr.hash = bytes24(keccak256(data));
+        paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
         // Weird that cannot call precompiled contract like this (solidity issue?)
@@ -199,6 +197,7 @@ contract DecentralizedKV {
             return false;
         }
 
-        return paddr.hash == bytes24(keccak256(data));
+        bytes24 dataHash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
+        return paddr.hash == dataHash;
     }
 }

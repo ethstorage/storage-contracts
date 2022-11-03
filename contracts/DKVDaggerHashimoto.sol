@@ -10,6 +10,7 @@ import "./MiningLib.sol";
 contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     struct Config {
         uint256 maxKvSizeBits;
+        uint256 chunkSizeBits;
         uint256 shardSizeBits;
         uint256 randomChecks;
         uint256 minimumDiff;
@@ -22,6 +23,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
     uint256 public immutable shardEntryBits;
+    uint256 public immutable chunkLenBits;
     uint256 public immutable randomChecks;
     uint256 public immutable minimumDiff;
     uint256 public immutable targetIntervalSec;
@@ -41,13 +43,19 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
+                        _startTime, _storageCost, _dcfFactor)
     {
+        /* Assumptions */
+        require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
+        require(_config.maxKvSizeBits >= _config.chunkSizeBits, "maxKvSize too small");
+        require(_config.randomChecks > 0, "At least one checkpoint needed");
+
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
-        require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
         shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
+        chunkLenBits = _config.maxKvSizeBits - _config.chunkSizeBits;
         randomChecks = _config.randomChecks;
         minimumDiff = _config.minimumDiff;
         targetIntervalSec = _config.targetIntervalSec;
@@ -152,7 +160,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
          * lookupTableBytes: 4096 vs 64
          * use XOR with random position of mix data intead of FNV with fixed mix positions for faster speed
          */
-        require(maskedData.length == randomChecks, "incorrect PoRA");
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         uint256 maxKvSize = 1 << maxKvSizeBits;
         bytes memory mix = new bytes(maxKvSize);
         for (uint256 j = 32; j <= maxKvSize; j += 32) {
@@ -195,7 +203,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
     /*
      * Run a modified hashimoto hash.
-     * This is eaiser running in evm
+     * This is eaiser running in evm, and it is designed for smaller size
      */
     function _hashimotoKeccak256(
         uint256 startShardId,
@@ -203,7 +211,10 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 hash0,
         bytes[] memory maskedData
     ) internal view returns (bytes32) {
-        require(maskedData.length == randomChecks, "incorrect PoRA");
+        /* Assumption check */
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
+        require(maskedData[0].length == chunkSize, "too large data uploaded");
+
         uint256 maxKvSize = 1 << maxKvSizeBits;
         uint256 rows = 1 << (shardEntryBits + shardLenBits);
 
@@ -213,6 +224,45 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = maskedData[i];
             require(systemContract.checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+
+            assembly {
+                mstore(data, hash0)
+                hash0 := keccak256(data, add(maxKvSize, 0x20))
+                mstore(data, maxKvSize)
+            }
+        }
+        return hash0;
+    }
+
+    /*
+     * Run a modified hashimoto hash,
+     * with Merkle inclusion proofs
+     */
+    function _hashimotoMerkleProof(
+        uint256 startShardId,
+        uint256 shardLenBits,
+        bytes32 hash0,
+        bytes32[][] memory proofsDim2,
+        bytes[] memory maskedData
+    ) internal view returns (bytes32) {
+        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
+        require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
+        uint256 maxKvSize = 1 << maxKvSizeBits;
+        uint256 rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
+
+        for (uint256 i = 0; i < randomChecks; i++) {
+            require(maskedData[i].length == chunkSize, "invalid proof size");
+            uint256 parent = uint256(hash0) % rows;
+            uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
+            uint256 kvIdx = chunkIdx >> chunkLenBits;
+            chunkIdx = chunkIdx % (1 << chunkLenBits);
+            bytes memory data = maskedData[i];
+            /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
+             *         The difficulty should increase intrinsically */
+            require(
+                systemContract.checkDaggerDataWithProof(chunkIdx, kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
+                "invalid access proof"
+            );
 
             assembly {
                 mstore(data, hash0)
@@ -299,6 +349,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         address miner,
         uint256 minedTs,
         uint256 nonce,
+        bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal {
         require(minedTs <= timestamp, "minedTs too large");
@@ -310,7 +361,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         );
 
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimotoKeccak256(startShardId, shardLenBits, hash0, maskedData);
+        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, proofsDim2, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
@@ -322,14 +373,17 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     }
 
     // We allow cross mine multiple shards by aggregating their difficulties.
+    // For some reasons, we never use checkIdList but if we remove it, we will get
+    // a `Stack too deap error`
     function mine(
         uint256 startShardId,
         uint256 shardLenBits,
         address miner,
         uint256 minedTs,
         uint256 nonce,
+        bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) public virtual {
-        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, maskedData);
+        return _mine(block.timestamp, startShardId, shardLenBits, miner, minedTs, nonce, proofsDim2, maskedData);
     }
 }

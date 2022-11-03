@@ -1,6 +1,7 @@
 const { web3 } = require("hardhat");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const  crypto  = require("crypto");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
 var padRight32 = (x) => x.padEnd(66, "0");
@@ -22,7 +23,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 1 random access
     const kv = await MinabledKV.deploy(
-      [6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
+      [6, 6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -52,7 +53,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 4 entries in shard, 2 random access
     const kv = await MinabledKV.deploy(
-      [6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
+      [6, 6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -85,7 +86,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 4096 bytes per data, 32 entries in shard, 16 random access
     const kv = await MinabledKV.deploy(
-      [12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
+      [12, 12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -153,7 +154,7 @@ describe("Basic Func Test", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 4096 bytes per data, 32 entries in shard, 16 random access
     const kv = await MinabledKV.deploy(
-      [12, 17, 3, 0, 60, 40, 1024, 0, sc.address],
+      [12, 12, 17, 3, 0, 60, 40, 1024, 0, sc.address],
       0,
       0,
       0,
@@ -200,7 +201,7 @@ describe("Basic Func Test", function () {
     const sc = await SystemContract.deploy();
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    const kv = await MinabledKV.deploy([5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
+    const kv = await MinabledKV.deploy([5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
     await kv.deployed();
 
     let m0 = await kv.calculateDiffAndInitHash(0, 1, 5);
@@ -219,6 +220,7 @@ describe("Basic Func Test", function () {
 
 describe("Full cycle of mining procedure", function () {
   const maxKvSizeBits = 6;
+  const chunkSizeBits = 6;
   const shardSizeBits = 10;
   const randomChecks = 1;
   const minimumDiff = 1;
@@ -285,7 +287,7 @@ describe("Full cycle of mining procedure", function () {
     return numbers.slice(0,randomChecks);
   }
 
-  it("runs full mining cycle", async function () {
+  it("runs full mining cycle small", async function () {
     const [owner, addr1, addr2] = await ethers.getSigners();
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
@@ -294,7 +296,7 @@ describe("Full cycle of mining procedure", function () {
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
     // 64 bytes per data, 16 entries in shard, 4 random access
     const kv = await MinabledKV.deploy(
-      [maxKvSizeBits, shardSizeBits, randomChecks, minimumDiff, 
+      [maxKvSizeBits, chunkSizeBits, shardSizeBits, randomChecks, minimumDiff, 
        targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
       0, //startTime
       0, //storageCost
@@ -368,7 +370,156 @@ describe("Full cycle of mining procedure", function () {
     }
     expect(LIMIT).to.be.above(count);
 
-    await kv.mine(0,0,wallet.address,mineTs,nonce,maskedData);
+    await kv.mine(0,0,wallet.address,mineTs,nonce,[[]],maskedData);
+    
+  });
+});
+
+describe("Full cycle of mining procedure with Merkle proof", function () {
+  const maxKvSizeBits = 13; // 4K x 2
+  const chunkSizeBits = 12; // 4K
+  const shardSizeBits = 14; // 2 blocks per shard
+  const randomChecks = 1;
+  const minimumDiff = 1;
+  const targetIntervalSec = 60;
+  const cutoff = 40;
+  const diffAdjDivisor = 1024;
+  const coinbaseShare = 0;
+  const shardEntryBits = shardSizeBits - maxKvSizeBits;
+  const verbose = false;
+
+  const LIMIT = 10;
+
+  const local_idx_2_key = x => ethers.utils.formatBytes32String(x.toString());
+
+  /* Conduct a off-chain pre-check for gaining reward purpose */
+  function hashimoto_local(startShardId, shardLenBits, _hash0, maskedData, randomList, chunkIdArray, chunkLenBits) {
+    const maxKvSize = 1 << maxKvSizeBits;
+    const rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
+    let hash0 = _hash0;
+    for (let i = 0; i < randomChecks; i++) {
+        const parent = ethers.BigNumber.from(hash0).mod(rows).toNumber();
+        const chunkOffset = parent + (startShardId << (shardEntryBits + chunkLenBits));
+        const kvIdx = chunkOffset >> chunkLenBits;
+        const chunkIdx = chunkOffset % (1 << chunkLenBits);
+        if (verbose){
+          console.log("hash is "+hash0);
+          console.log("kvIdx %d -- desired randomList idx %d; chunkIdx %d -- desired id from array %d ", 
+                      kvIdx, randomList[i], chunkIdx, chunkIdArray[i]);
+        }
+        // in shard local data, index matches = data matches
+        if (kvIdx != randomList[i] || chunkIdx != chunkIdArray[i]) {
+          return [0, false];
+        }
+        hash0 = keccak256(concat([padRight32(ethers.utils.hexlify(hash0)), maskedData[i]]));
+    }
+    return [hash0, true];
+  }
+
+  function random_generator() {
+    const numbers = Array((1 << (shardSizeBits - maxKvSizeBits))-1).fill().map((_, index) => index + 1);
+    numbers.sort(() => Math.random() - 0.5);
+    return numbers.slice(0,randomChecks);
+  }
+
+  it("runs full mining cycle 32KB", async function () {
+    const [owner, addr1, addr2] = await ethers.getSigners();
+    let wallet = ethers.Wallet.createRandom().connect(owner.provider);
+    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+    const sc = await SystemContract.deploy();
+    await sc.deployed();
+
+    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+    // 32KB per KV block, 4 entries in shard, 1 random access
+    const kv = await MinabledKV.deploy(
+      [maxKvSizeBits, chunkSizeBits, shardSizeBits, randomChecks, minimumDiff, 
+       targetIntervalSec, cutoff, diffAdjDivisor, coinbaseShare, sc.address],
+      0, //startTime
+      0, //storageCost
+      0, // dcfFactor
+      ethers.utils.formatBytes32String("") //genesisHash
+    );
+    await kv.deployed();
+
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
+    
+    const numShards = 1 << (shardSizeBits - maxKvSizeBits);
+    let l = 0;
+    let dataList = [];
+    for (let i = 0; i < numShards; i++) {
+      // 32KB data per KV block
+      const d = crypto.randomBytes(1 << maxKvSizeBits);
+      dataList.push(d);
+      // PUT won't change the diff info
+      await kv.put(local_idx_2_key(i), ethers.utils.hexlify(dataList[i]));
+    }
+
+    const mineTs = 120;
+    kv.setTimestamp(240);
+    const meta = await kv.calculateDiffAndInitHash(0,1,mineTs);
+    const diff = meta.diff.toNumber();
+    const nonce = 1;
+    const CHUNK_SIZE = (await kv.chunkSize()).toNumber();
+    const chunkLenBits = (await kv.chunkLenBits()).toNumber();
+    if (verbose) console.log("chunkLenBits: " + chunkLenBits);
+
+    let count = 0;
+    let chunksIdxArrayPointer = 0;
+    let maskedData = [];
+    let chunkIdArray = [];
+    let randomList = [];
+    while (count < LIMIT)
+    {
+      if(verbose){
+        console.log("Turn %d ", count);
+      }
+      const a = ethers.utils.hexlify(meta.hash0);
+      const b = padLeft32(ethers.utils.hexlify(wallet.address));
+      const c = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(mineTs)));
+      const d = padLeft32(ethers.utils.hexlify(ethers.BigNumber.from(nonce)));
+      const h0 = keccak256(ethers.utils.concat([a,b,c,d]));
+
+      /* random fashion: ready hard to find */
+      //const randomList = random_generator();
+      randomList = [count % numShards];
+      let dataSlice = [];
+      Array.from(randomList, x => 
+          dataSlice.push(dataList[x].slice(chunksIdxArrayPointer*CHUNK_SIZE,(chunksIdxArrayPointer+1)*CHUNK_SIZE)));
+      chunkIdArray=[chunksIdxArrayPointer];
+      
+      const ret = hashimoto_local(0, 0, h0, dataSlice, randomList, chunkIdArray, chunkLenBits);
+      const success = ret[1];
+      if (success) {
+        const ret_hash0 = ret[0];
+        const numericalHash = ethers.BigNumber.from(ret_hash0);
+        const dividend = ethers.BigNumber.from(2);
+        const ratio = dividend.pow(256).sub(1).div(numericalHash).toNumber();
+        if (ratio >= diff){
+          // matched
+          maskedData = dataSlice;
+          break;
+        }
+      }
+      // failed to search
+      // increase the offset inside a KV block
+      chunksIdxArrayPointer = (chunksIdxArrayPointer+1) % (1 << chunkLenBits);
+      // examine all chunks inside a KV block before move to next shards 
+      if (0 == chunksIdxArrayPointer) count = count + 1;
+    }
+    expect(LIMIT).to.be.above(count);
+
+    /* Up to here, we get a valid maskedData and chunkArray, construct proofs here */
+    let proofsDim2 = [];
+    for (let i = 0; i < randomChecks; i++) {
+      const data = dataList[randomList[i]];
+      const chunkIdx = chunkIdArray[i];
+      const proof = await ml.getProof(data, CHUNK_SIZE, chunkLenBits, chunkIdx);
+      proofsDim2.push(proof);
+    }
+
+    await kv.mine(0,0,wallet.address,mineTs,nonce,proofsDim2,maskedData);
     
   });
 });

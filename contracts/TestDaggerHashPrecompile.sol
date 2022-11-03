@@ -11,7 +11,7 @@ contract TestDaggerHashPrecompile {
         maxKvSize = _maxKvSize;
     }
 
-    fallback (bytes calldata data) external returns (bytes memory) {
+    fallback(bytes calldata data) external returns (bytes memory) {
         require(data.length == maxKvSize + 32, "incorrect data size");
         bytes memory maskedData = data;
         bytes32 paddr;
@@ -35,8 +35,9 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
     constructor(
         ISystemContractDaggerHashimoto _storageManager,
         uint256 _maxKvSize,
+        uint256 _chunkSize,
         address _daggerHashAddr
-    ) TestDecentralizedKV(_storageManager, _maxKvSize, 0, 0, 0) {
+    ) TestDecentralizedKV(_storageManager, _maxKvSize, _chunkSize, 0, 0, 0) {
         sysContract = _storageManager;
         daggerHashAddr = _daggerHashAddr;
     }
@@ -49,6 +50,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         assembly {
             paddrValue := sload(paddr.slot)
         }
+
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
     }
 
@@ -61,6 +63,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         assembly {
             paddrValue := sload(paddr.slot)
         }
+
         return DaggerHashCaller.checkDaggerData(daggerHashAddr, paddrValue, maskedData);
     }
 
@@ -85,5 +88,17 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
         PhyAddr memory paddr = kvMap[skey];
         return sysContract.checkDaggerData(paddr.kvIdx, paddr.hash, maskedData);
+    }
+
+    function checkDaggerHashNormalMerkle(
+        uint256 idx,
+        bytes32 key,
+        bytes32[] memory proofs,
+        bytes memory maskedData
+    ) public view returns (bool) {
+        // Now handling data larger than 4K
+        bytes32 skey = keccak256(abi.encode(msg.sender, key));
+        PhyAddr memory paddr = kvMap[skey];
+        return sysContract.checkDaggerDataWithProof(idx, paddr.hash, proofs, maskedData);
     }
 }

@@ -7,6 +7,7 @@ import "./MiningLib.sol";
 contract DecentralizedKVMinable is DecentralizedKV {
     struct Config {
         uint256 maxKvSizeBits;
+        uint256 chunkSizeBits;
         uint256 shardSizeBits;
         uint256 randomChecks;
         uint256 minimumDiff;
@@ -38,8 +39,11 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
+                         _startTime, _storageCost, _dcfFactor)
     {
+        require(_config.shardSizeBits >= _config.maxKvSizeBits, "config size mismatch");
+        require(_config.randomChecks > 0, "randomChecks must be nonzero");
         systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;

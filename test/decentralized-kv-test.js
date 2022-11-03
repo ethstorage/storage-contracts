@@ -13,7 +13,7 @@ describe("DecentralizedKV Test", function () {
     const sm = await StorageManager.deploy();
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
-    const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
+    const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
@@ -33,7 +33,7 @@ describe("DecentralizedKV Test", function () {
     const sm = await StorageManager.deploy();
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
-    const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
+    const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
@@ -67,6 +67,7 @@ describe("DecentralizedKV Test", function () {
     // 1e18 cost with 0.5 discount rate per second
     const kv = await DecentralizedKV.deploy(
       sm.address,
+      1024,
       1024,
       0,
       "1000000000000000000",
@@ -114,6 +115,7 @@ describe("DecentralizedKV Test", function () {
     const kv = await DecentralizedKV.deploy(
       sm.address,
       1024,
+      1024,
       0,
       "1000000000000000000",
       "340282365784068676928457747575078800565"
@@ -147,7 +149,7 @@ describe("DecentralizedKV Test", function () {
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.5 discount rate per second
-    const kv = await DecentralizedKV.deploy(sm.address, 1024, 0, 0, 0);
+    const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
     await kv.deployed();
 
     // write random data

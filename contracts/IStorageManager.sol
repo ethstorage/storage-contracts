@@ -39,8 +39,16 @@ interface IDaggerHash {
         bytes32 kvHash,
         bytes memory maskedData
     ) external view returns (bool);
+
+    function checkDaggerDataWithProof(
+        uint256 kvIdx,
+        bytes32 kvHash,
+        bytes32[] memory proofs,
+        bytes memory maskedData
+    ) external view returns (bool);
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {}
 
 interface ISystemContractDaggerHashimoto is IStorageManager, IDaggerHash {}
+
