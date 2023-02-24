@@ -18,7 +18,7 @@ contract StorageManager {
         uint256 len
     ) internal view returns (bytes memory){
         (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(
-            abi.encodePacked(hash, kvIdx, off, len)
+            abi.encode(hash, kvIdx, off, len)
         );
         require(success, "failed to getRaw");
         return data;
@@ -27,7 +27,7 @@ contract StorageManager {
     // Set a raw data to underlying storage.
     function putRaw(uint256 kvIdx, bytes memory data) internal {
         (bool success, ) = address(sstoragePisaPutRaw).call(
-            abi.encodePacked(kvIdx, data)
+            abi.encode(kvIdx, data)
         );
         require(success, "failed to putRaw");
     }
@@ -35,7 +35,7 @@ contract StorageManager {
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) internal {
          (bool success, ) = address(sstoragePisaRemoveRaw).call(
-            abi.encodePacked(fromKvIdx, toKvIdx)
+            abi.encode(fromKvIdx, toKvIdx)
         );
         require(success, "failed to removeRaw");
     }
