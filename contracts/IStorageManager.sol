@@ -3,18 +3,21 @@ pragma solidity ^0.8.0;
 
 interface IStorageManager {
     // Get a raw data from underlying storage.
-    function getRaw(
-        bytes32 hash,
-        uint256 kvIdx,
-        uint256 off,
-        uint256 len
-    ) external view returns (bytes memory);
+    function getRaw(bytes32 hash, uint256 kvIdx, uint256 off, uint256 len) external view returns (bytes memory);
 
     // Set a raw data to underlying storage.
     function putRaw(uint256 kvIdx, bytes memory data) external;
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) external;
+
+    function unmaskChunk(
+        uint64 encodeType,
+        uint64 chunkIdx,
+        bytes32 kvHash,
+        address miner,
+        bytes memory maskedChunk
+    ) external view returns (bytes memory);
 }
 
 interface IMiningHash {
@@ -34,11 +37,7 @@ interface IMiningHash {
 
 interface IDaggerHash {
     // Return if the maskedData matches underlying data
-    function checkDaggerData(
-        uint256 kvIdx,
-        bytes32 kvHash,
-        bytes memory maskedData
-    ) external view returns (bool);
+    function checkDaggerData(uint256 kvIdx, bytes32 kvHash, bytes memory maskedData) external view returns (bool);
 
     function checkDaggerDataWithProof(
         uint256 kvIdx,
@@ -51,4 +50,3 @@ interface IDaggerHash {
 interface ISystemContract is IStorageManager, IMiningHash {}
 
 interface ISystemContractDaggerHashimoto is IStorageManager, IDaggerHash {}
-

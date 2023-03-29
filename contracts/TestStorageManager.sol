@@ -43,4 +43,9 @@ contract TestStorageManager is IStorageManager {
         dataMap[toKvIdx] = dataMap[fromKvIdx];
         delete dataMap[fromKvIdx];
     }
+
+    function unmaskChunk(uint64 encodeType , uint64 chunkIdx, bytes32 kvHash, address miner ,bytes memory maskedChunk) public view  virtual override returns(bytes memory){
+        bytes memory data = new bytes(0);
+        return data; 
+    }
 }
