@@ -33,19 +33,15 @@ interface IMiningHash {
 }
 
 interface IDaggerHash {
-    // Return if the maskedData matches underlying data
-    function checkDaggerData(
+    // Decode the data and return raw data that verfier needs
+    function unmaskWithEthash(
         uint256 kvIdx,
-        bytes32 kvHash,
         bytes memory maskedData
-    ) external view returns (bool);
+    ) external view returns (bytes memory);
 
-    function checkDaggerDataWithProof(
-        uint256 kvIdx,
-        bytes32 kvHash,
-        bytes32[] memory proofs,
-        bytes memory maskedData
-    ) external view returns (bool);
+    // Another option is to use Verify Delay Function(VDF),
+    // such as MiMC. For saving gas cost, those are not materialized for now
+
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {}

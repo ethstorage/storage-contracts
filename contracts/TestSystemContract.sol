@@ -43,35 +43,12 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
 }
 
 contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContractDaggerHashimoto {
-    /* NOTICE: 
-     *   This function assumes users clearly know their submitting data
-     *   is LESS OR EQUAL THAN SYSTEM_MINIMAL_BLOCK (which is 4K normally).
-     *   So basically this is a trival keccak256 comparison on a full bytes32
-     */
-    function checkDaggerData(
+    function unmaskWithEthash(
         uint256,
-        bytes32 kvHash,
         bytes memory maskedData
-    ) public pure override returns (bool) {
-        bytes32[] memory proofs;
-        require(proofs.length == 0, "need an empty proofs");
-        return checkDaggerDataWithProof(0, kvHash, proofs, maskedData);
-    }
-
-    function checkDaggerDataWithProof(
-        uint256 idx,
-        bytes32 kvHash,
-        bytes32[] memory proofs,
-        bytes memory maskedData
-    ) public pure override returns (bool) {
-        bytes32 dataHash = keccak256(maskedData);
-        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, idx, proofs);
-        /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
-         *         are valid. We only validate that part.
-         * With no doubt, it introduces some vulnerability compared 
-         * with a standard Merkle validation. It is a trade-off,
-         * if we want to put all meta data into a single bytes32(opcode length)
-         */
-        return bytes24(rootFromProofs) == bytes24(kvHash);
+    ) external view override returns (bytes memory) {
+        // In current test version we actually use raw data
+        // Need to implement once encoding/decoding is ready
+        return maskedData;
     }
 }

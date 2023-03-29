@@ -102,6 +102,7 @@ contract DecentralizedKV {
             lastKvIdx = lastKvIdx + 1;
         }
         paddr.kvSize = uint24(data.length);
+        // Register a commitment on meta data
         paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
