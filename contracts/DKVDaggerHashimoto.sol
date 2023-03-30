@@ -159,8 +159,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
         }
         
-        uint256 startChunkIdx = chunksNumPerKV * kvInfo.kvIdx;
-        uint256 chunkLeafIdx = chunkIdx - startChunkIdx;
+        uint256 chunkLeafIdx = chunkIdx % (1 << chunkLenBits);
 
         if (chunkLeafIdx >=  MerkleLib.getMaxLeafsNum(kvInfo.kvSize,chunkSize)){
             return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
@@ -308,7 +307,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = uint256(hash0) % rows;
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;
-            chunkIdx = chunkIdx % (1 << chunkLenBits);
             PhyAddr memory kvInfo = kvMap[idxMap[kvIdx]];
             bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(uint64(chunkIdx), kvInfo.hash, miner, maskedData[i]);
             /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
@@ -318,10 +316,12 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
                 "invalid access proof"
             );
 
+            bytes memory maskedChunkData = maskedData[i];
+
             assembly {
-                mstore(unmaskedData, hash0)
-                hash0 := keccak256(unmaskedData, add(maxKvSize, 0x20))
-                mstore(unmaskedData, maxKvSize)
+                mstore(maskedChunkData, hash0)
+                hash0 := keccak256(maskedChunkData, add(maxKvSize, 0x20))
+                mstore(maskedChunkData, maxKvSize)
             }
         }
         return hash0;
