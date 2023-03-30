@@ -34,13 +34,20 @@ interface IMiningHash {
 
 interface IDaggerHash {
     // Decode the data and return raw data that verfier needs
+    function unmaskChunkWithEthash(
+        uint64 chunkIdx,
+        bytes32 kvHash,
+        address miner,
+        bytes memory maskedChunk
+    ) external view returns (bytes memory);
+
+
+    // Another option is to use Verify Delay Function(VDF),
+    // such as MiMC. For saving gas cost, those are not materialized for now
     function unmaskWithEthash(
         uint256 kvIdx,
         bytes memory maskedData
     ) external view returns (bytes memory);
-
-    // Another option is to use Verify Delay Function(VDF),
-    // such as MiMC. For saving gas cost, those are not materialized for now
 
 }
 
