@@ -289,7 +289,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
      * Run a modified hashimoto hash,
      * with Merkle inclusion proofs
      */
-    function _hashimotoMerkleProof(
+function _hashimotoMerkleProof(
         uint256 startShardId,
         uint256 shardLenBits,
         bytes32 hash0,
@@ -308,16 +308,22 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;
             PhyAddr memory kvInfo = kvMap[idxMap[kvIdx]];
-            bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(uint64(chunkIdx), kvInfo.hash, miner, maskedData[i]);
+
+            /* NOTICE: kvInfo.hash is the bytes20-hash , the value will be set at the front 
+            *          20-byte when it converts to bytes32-hash */
+            bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(
+                uint64(chunkIdx),
+                kvInfo.hash,
+                miner,
+                maskedData[i]
+            );
             /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
              *         The difficulty should increase intrinsically */
-            require(
-                checkDaggerDataWithProof(chunkIdx, kvInfo, proofsDim2[i], unmaskedData),
-                "invalid access proof"
-            );
+            require(checkDaggerDataWithProof(chunkIdx, kvInfo, proofsDim2[i], unmaskedData), "invalid access proof");
 
+            /* NOTICE: we should use the maskedChunkData merged with the `hash0` to calculate the new `hash0` 
+            *          because the miner executes this `hash0` calculation off-chain in this way. */
             bytes memory maskedChunkData = maskedData[i];
-
             assembly {
                 mstore(maskedChunkData, hash0)
                 hash0 := keccak256(maskedChunkData, add(maxKvSize, 0x20))
