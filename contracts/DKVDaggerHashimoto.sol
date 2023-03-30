@@ -20,6 +20,9 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 coinbaseShare; // 10000 = 1.0
         ISystemContractDaggerHashimoto systemContract;
     }
+
+    bytes32 public constant EMPTY_CHUNK_4KB_HASH = 0xa8bae11751799de4dbe638406c5c9642c0e791f2a65e852a05ba4fdf0d88e3e6;
+
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
     uint256 public immutable shardEntryBits;
@@ -144,20 +147,34 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
     /* ON CHAIN VERFICATION */
     function checkDaggerDataWithProof(
-        uint256 idx,
-        bytes32 kvHash,
+        uint256 chunkIdx,
+        PhyAddr memory kvInfo,
         bytes32[] memory proofs,
-        bytes memory maskedData
-    ) public pure returns (bool) {
-        bytes32 dataHash = keccak256(maskedData);
-        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, idx, proofs);
+        bytes memory unmaskedData
+    ) public view returns (bool) {
+        uint256 chunksNumPerKV = 1 << chunkLenBits;
+        uint256 maxChunkIdx = lastKvIdx * chunksNumPerKV-1;
+
+        if (chunkIdx > maxChunkIdx){
+            return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
+        }
+        
+        uint256 startChunkIdx = chunksNumPerKV * kvInfo.kvIdx;
+        uint256 chunkLeafIdx = chunkIdx - startChunkIdx;
+
+        if (chunkLeafIdx >=  MerkleLib.getMaxLeafsNum(kvInfo.kvSize,chunkSize)){
+            return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
+        }
+        
+        bytes32 dataHash = keccak256(unmaskedData);
+        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, chunkLeafIdx, proofs);
         /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
          *         are valid. We only validate that part.
          * With no doubt, it introduces some vulnerability compared 
          * with a standard Merkle validation. It is a trade-off,
          * if we want to put all meta data into a single bytes32(opcode length)
          */
-        return bytes24(rootFromProofs) == bytes24(kvHash);
+        return bytes24(rootFromProofs) == bytes24(kvInfo.hash);
     }
 
     /* NOTICE: 
@@ -167,12 +184,12 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
      */
     function checkDaggerData(
         uint256,
-        bytes32 kvHash,
+        PhyAddr memory kvInfo,
         bytes memory maskedData
-    ) public pure returns (bool) {
+    ) public view returns (bool) {
         bytes32[] memory proofs;
         require(proofs.length == 0, "need an empty proofs");
-        return checkDaggerDataWithProof(0, kvHash, proofs, maskedData);
+        return checkDaggerDataWithProof(0, kvInfo, proofs, maskedData);
     }
 
     /* END OF ON CHAIN VERFICATION */
@@ -221,7 +238,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = mixData % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
-            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]], data), "invalid access proof");
 
             // Next mixOff
             mixOff = (mixData >> (shardEntryBits + shardLenBits)) % (maxKvSize - 32);
@@ -258,7 +275,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
             bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
-            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]], data), "invalid access proof");
 
             assembly {
                 mstore(data, hash0)
@@ -277,6 +294,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLenBits,
         bytes32 hash0,
+        address miner,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal view returns (bytes32) {
@@ -291,18 +309,19 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;
             chunkIdx = chunkIdx % (1 << chunkLenBits);
-            bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
+            PhyAddr memory kvInfo = kvMap[idxMap[kvIdx]];
+            bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(uint64(chunkIdx), kvInfo.hash, miner, maskedData[i]);
             /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
              *         The difficulty should increase intrinsically */
             require(
-                checkDaggerDataWithProof(chunkIdx, kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
+                checkDaggerDataWithProof(chunkIdx, kvInfo, proofsDim2[i], unmaskedData),
                 "invalid access proof"
             );
 
             assembly {
-                mstore(data, hash0)
-                hash0 := keccak256(data, add(maxKvSize, 0x20))
-                mstore(data, maxKvSize)
+                mstore(unmaskedData, hash0)
+                hash0 := keccak256(unmaskedData, add(maxKvSize, 0x20))
+                mstore(unmaskedData, maxKvSize)
             }
         }
         return hash0;
@@ -396,7 +415,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         );
 
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, proofsDim2, maskedData);
+        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, miner,proofsDim2, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
