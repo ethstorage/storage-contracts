@@ -40,7 +40,7 @@ library MerkleLib {
     }
 
     function getMaxLeafsNum(uint256 dataLen,uint256 chunkSize) internal pure returns(uint256){
-        uint256 n = (data.length + chunkSize - 1) / chunkSize;
+        uint256 n = (dataLen + chunkSize - 1) / chunkSize;
         uint256 nChunks = n <= 1 ? 1 : BinaryRelated.findNextPowerOf2(n);
         return nChunks;
     }
