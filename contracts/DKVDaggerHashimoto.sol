@@ -150,35 +150,35 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 chunkIdx,
         PhyAddr memory kvInfo,
         bytes32[] memory proofs,
-        bytes memory unmaskedData
+        bytes memory unmaskedChunkData
     ) public view returns (bool) {
         uint256 chunksNumPerKV = 1 << chunkLenBits;
         uint256 maxChunkIdx = lastKvIdx * chunksNumPerKV-1;
 
         if (chunkIdx > maxChunkIdx){
-            return keccak256(unmaskedData) == EMPTY_CHUNK_HASH;
+            return keccak256(unmaskedChunkData) == EMPTY_CHUNK_HASH;
         }
         
         uint256 mchunkSize = chunkSize;
         uint256 chunkLeafIdx = chunkIdx % chunksNumPerKV;
         uint256 maxLeafIdx = MerkleLib.getMaxLeafsNum(kvInfo.kvSize,mchunkSize) - 1;
         if (chunkLeafIdx >  maxLeafIdx){
-            return keccak256(unmaskedData) == EMPTY_CHUNK_HASH;
+            return keccak256(unmaskedChunkData) == EMPTY_CHUNK_HASH;
         }
 
         // we should consider two special cases:
         // 1. the chunk-leaf is the last chunk with empty being full with zero 
         // 2. the data is not full with the whole chunk-leaf 
         bytes32 dataHash;
-        if (chunkLeafIdx == maxLeafIdx && (maxLeafIdx * mchunkSize) >= kvInfo.kvSize  ) {
+        if ( (chunkLeafIdx * mchunkSize) >= kvInfo.kvSize  ) {
             dataHash = bytes32(0);
         }else if(chunkLeafIdx * mchunkSize < kvInfo.kvSize && kvInfo.kvSize <= (chunkLeafIdx+1) * mchunkSize){
             uint256 validUnmaskedDataLen = kvInfo.kvSize - chunkLeafIdx * mchunkSize;
             assembly{
-                dataHash := keccak256(add(unmaskedData,0x20),validUnmaskedDataLen)
+                dataHash := keccak256(add(unmaskedChunkData,0x20),validUnmaskedDataLen)
             }
         }else{
-            dataHash = keccak256(unmaskedData);
+            dataHash = keccak256(unmaskedChunkData);
         }
         
         bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, chunkLeafIdx, proofs);
@@ -285,6 +285,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 rows = 1 << (shardEntryBits + shardLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
+
             require(maskedData[i].length == maxKvSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
