@@ -21,7 +21,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         ISystemContractDaggerHashimoto systemContract;
     }
 
-    bytes32 public constant EMPTY_CHUNK_4KB_HASH = 0xa8bae11751799de4dbe638406c5c9642c0e791f2a65e852a05ba4fdf0d88e3e6;
+    bytes32 public immutable EMPTY_CHUNK_HASH;
 
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
@@ -66,7 +66,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         diffAdjDivisor = _config.diffAdjDivisor;
         coinbaseShare = _config.coinbaseShare;
         emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
-
+        EMPTY_CHUNK_HASH = keccak256(new bytes(1 << _config.chunkSizeBits));
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
         infos[0].miningHash = _genesisHash;
@@ -156,14 +156,14 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 maxChunkIdx = lastKvIdx * chunksNumPerKV-1;
 
         if (chunkIdx > maxChunkIdx){
-            return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
+            return keccak256(unmaskedData) == EMPTY_CHUNK_HASH;
         }
         
         uint256 mchunkSize = chunkSize;
         uint256 chunkLeafIdx = chunkIdx % chunksNumPerKV;
         uint256 maxLeafIdx = MerkleLib.getMaxLeafsNum(kvInfo.kvSize,mchunkSize) - 1;
         if (chunkLeafIdx >  maxLeafIdx){
-            return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
+            return keccak256(unmaskedData) == EMPTY_CHUNK_HASH;
         }
 
         // we should consider two special cases:
