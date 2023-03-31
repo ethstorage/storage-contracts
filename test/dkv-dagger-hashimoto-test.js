@@ -455,15 +455,13 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let dataList = [];
 
     const dataSize = 6000;
-    // case 1:put a whole kvSize data 6000, the maxKvSize is 8192 , the chunkSize is 2048
-    // chunk1 size = 2048 ; chunk2 size = 2048 ; chunk3 size =1904 ; chunk4 size = 0 
+    // put a whole kvSize data 6000, the maxKvSize is 8192 , the chunkSize is 2048
+    // chunk0 size = 2048 ; chunk1 size = 2048 ; chunk2 size =1904 ; chunk3 size = 0 
     const kvIdx_0 = 0 
     const d = crypto.randomBytes(dataSize);
     dataList.push(d);
     // PUT won't change the diff info
     await kv.put(local_idx_2_key(kvIdx_0), ethers.utils.hexlify(dataList[kvIdx_0]));
-
-    console.log(dataList[kvIdx_0].length)
 
     const getData = await kv.get(local_idx_2_key(kvIdx_0),0,dataSize)
     const expectData = ToBig(dataList[kvIdx_0]).toHexString();
@@ -522,6 +520,8 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
 
 
     // ======== put the kvIdx 1 ============= 
+    // put a kvSize data 4096, the KvSize is 4096 , the chunkSize is 2048
+    // chunk4 size = 2048 ; chunk5 size = 2048 ; chunk6 size =0 ; chunk7 size = 0 
     const datasize_1 = 4096
     const kvIdx_1 = 1 
     const d1 = crypto.randomBytes(datasize_1);
@@ -537,20 +537,21 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let chunksNumPerKV = 1 << chunkLenBits
 
     // sample ChunkIdx 4 
-    // const SAMPLE_CHUNK_4 = 4;
-    // const proof_4= await ml.getProof(dataList[kvIdx_1],CHUNK_SIZE,chunkLenBits,SAMPLE_CHUNK_4%chunksNumPerKV)
-    // let chunkData_4 = Buffer.alloc(CHUNK_SIZE,0)
-    // dataList[kvIdx_1].copy(chunkData_4,0,0,CHUNK_SIZE);
-    // let result_4 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_4,kvInfo_1,proof_4,chunkData_4)
-    // expect(result_4).to.eq(true);
+    const SAMPLE_CHUNK_4 = 4;
+    let nChunkBits = datasize_1 / CHUNK_SIZE - 1;
+    const proof_4= await ml.getProof(dataList[kvIdx_1],CHUNK_SIZE,nChunkBits,SAMPLE_CHUNK_4%chunksNumPerKV)
+    let chunkData_4 = Buffer.alloc(CHUNK_SIZE,0)
+    dataList[kvIdx_1].copy(chunkData_4,0,0,CHUNK_SIZE);
+    let result_4 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_4,kvInfo_1,proof_4,chunkData_4)
+    expect(result_4).to.eq(true);
 
-    // // sample ChunkIdx 5 
-    // const SAMPLE_CHUNK_5 = 5;
-    // const proof_5 = await ml.getProof(dataList[kvIdx_1],CHUNK_SIZE,chunkLenBits,SAMPLE_CHUNK_5%chunksNumPerKV)
-    // const chunkData_5 = Buffer.alloc(CHUNK_SIZE,0);
-    // dataList[kvIdx_1].copy(chunkData_5,0,CHUNK_SIZE,2*CHUNK_SIZE);
-    // let result_5 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_5,kvInfo_1,proof_5,chunkData_5,)
-    // expect(result_5).to.eq(true);
+    // sample ChunkIdx 5 
+    const SAMPLE_CHUNK_5 = 5;
+    const proof_5 = await ml.getProof(dataList[kvIdx_1],CHUNK_SIZE,nChunkBits,SAMPLE_CHUNK_5%chunksNumPerKV)
+    const chunkData_5 = Buffer.alloc(CHUNK_SIZE,0);
+    dataList[kvIdx_1].copy(chunkData_5,0,CHUNK_SIZE,2*CHUNK_SIZE);
+    let result_5 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_5,kvInfo_1,proof_5,chunkData_5,)
+    expect(result_5).to.eq(true);
 
 
     // sample ChunkIdx 6
