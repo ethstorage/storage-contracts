@@ -89,4 +89,9 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
     ) public {
         _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
+
+    function unmaskWithEthash(
+        uint256 kvIdx,
+        bytes memory maskedData
+    ) external view returns (bytes memory){}
 }

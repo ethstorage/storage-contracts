@@ -51,4 +51,11 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         // Need to implement once encoding/decoding is ready
         return maskedData;
     }
+
+      function unmaskChunkWithEthash(
+        uint64 chunkIdx,
+        bytes32 kvHash,
+        address miner,
+        bytes memory maskedChunk
+    ) external view returns (bytes memory){} 
 }
