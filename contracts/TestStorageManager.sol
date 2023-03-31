@@ -6,8 +6,11 @@ import "./MerkleLib.sol";
 
 contract TestStorageManager is IStorageManager {
     mapping(uint256 => bytes) dataMap;
-    uint32 public constant CHUNK_SIZE = 4096; // 4K bytes is normal SSD minimal fetchable size
+    uint32 public CHUNK_SIZE; // 4K bytes is normal SSD minimal fetchable size
 
+    constructor(uint32 chunksize){
+        CHUNK_SIZE = chunksize;
+    }
     // Get a raw data from underlying storage.
     function getRaw(
         bytes32 hash,

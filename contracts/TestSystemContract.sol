@@ -8,7 +8,7 @@ import "./MerkleLib.sol";
 contract TestSystemContract is TestStorageManager, ISystemContract {
     uint256 immutable maxKvSize;
 
-    constructor(uint256 _maxKvSize) {
+    constructor(uint256 _maxKvSize,uint32 chunkSize)TestStorageManager(chunkSize){
         maxKvSize = _maxKvSize;
     }
 
@@ -43,6 +43,11 @@ contract TestSystemContract is TestStorageManager, ISystemContract {
 }
 
 contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContractDaggerHashimoto {
+
+     constructor(uint32 chunkSize)TestStorageManager(chunkSize){
+    }
+
+
     function unmaskWithEthash(
         uint256,
         bytes memory maskedData
@@ -57,7 +62,7 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         bytes32 kvHash,
         address miner,
         bytes memory maskedChunk
-    ) external view returns (bytes memory){
+    ) external view override returns (bytes memory){
         return maskedChunk;
     } 
 }
