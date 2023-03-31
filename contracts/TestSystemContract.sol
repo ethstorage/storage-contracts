@@ -57,5 +57,7 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
         bytes32 kvHash,
         address miner,
         bytes memory maskedChunk
-    ) external view returns (bytes memory){} 
+    ) external view returns (bytes memory){
+        return maskedChunk;
+    } 
 }
