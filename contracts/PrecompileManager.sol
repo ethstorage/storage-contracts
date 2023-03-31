@@ -10,6 +10,7 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
     address public constant sstoragePisaGetRaw = 0x0000000000000000000000000000000000033303;
     address public constant sstoragePisaUnmaskDaggerData = 0x0000000000000000000000000000000000033304;
     address public constant sstoragePisaRemoveRaw = 0x0000000000000000000000000000000000033305;
+    uint64 public constant ENCODE_ETHHASH = 2;
 
     // Get a raw data from underlying storage.
     function getRaw(
@@ -42,9 +43,9 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         bytes memory maskedChunk
     ) public view virtual returns (bytes memory) {
         (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
-            abi.encode(1, chunkIdx, kvHash, miner, maskedChunk)
+            abi.encode(ENCODE_ETHHASH, chunkIdx, kvHash, miner, maskedChunk)
         );
-        require(success, "failed to removeRaw");
+        require(success, "failed to unmaskChunkWithEthash");
         return unmaskedChunk;
     }
 
