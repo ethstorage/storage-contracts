@@ -159,13 +159,28 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
         }
         
-        uint256 chunkLeafIdx = chunkIdx % (1 << chunkLenBits);
-
-        if (chunkLeafIdx >=  MerkleLib.getMaxLeafsNum(kvInfo.kvSize,chunkSize)){
+        uint256 mchunkSize = chunkSize;
+        uint256 chunkLeafIdx = chunkIdx % chunksNumPerKV;
+        uint256 maxLeafIdx = MerkleLib.getMaxLeafsNum(kvInfo.kvSize,mchunkSize) - 1;
+        if (chunkLeafIdx >  maxLeafIdx){
             return keccak256(unmaskedData) == EMPTY_CHUNK_4KB_HASH;
         }
+
+        // we should consider two special cases:
+        // 1. the chunk-leaf is the last chunk with empty being full with zero 
+        // 2. the data is not full with the whole chunk-leaf 
+        bytes32 dataHash;
+        if (chunkLeafIdx == maxLeafIdx && (maxLeafIdx * mchunkSize) >= kvInfo.kvSize  ) {
+            dataHash = bytes32(0);
+        }else if(chunkLeafIdx * mchunkSize < kvInfo.kvSize && kvInfo.kvSize <= (chunkLeafIdx+1) * mchunkSize){
+            uint256 validUnmaskedDataLen = kvInfo.kvSize - chunkLeafIdx * mchunkSize;
+            assembly{
+                dataHash := keccak256(add(unmaskedData,0x20),validUnmaskedDataLen)
+            }
+        }else{
+            dataHash = keccak256(unmaskedData);
+        }
         
-        bytes32 dataHash = keccak256(unmaskedData);
         bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, chunkLeafIdx, proofs);
         /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
          *         are valid. We only validate that part.
@@ -299,6 +314,7 @@ function _hashimotoMerkleProof(
     ) internal view returns (bytes32) {
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
+        // calculate the number of chunks range of the sample check 
         uint256 rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
