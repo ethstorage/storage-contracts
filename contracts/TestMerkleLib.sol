@@ -41,4 +41,8 @@ contract TestMerkleLib {
     ) public pure returns (bytes32[] memory) {
         return MerkleLib.getProof(data, chunkSize, nChunkBits, chunkIdx);
     }
+
+    function getMaxLeafsNum(uint256 kvSize ,uint256 chunkSize)public pure returns(uint256){
+       return  MerkleLib.getMaxLeafsNum(kvSize,chunkSize) ;
+    }   
 }
