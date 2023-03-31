@@ -299,11 +299,11 @@ function _hashimotoMerkleProof(
     ) internal view returns (bytes32) {
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
-        uint256 maxKvSize = 1 << maxKvSizeBits;
         uint256 rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
-            require(maskedData[i].length == chunkSize, "invalid proof size");
+            uint256 mChunkSize = chunkSize;
+            require(maskedData[i].length == mChunkSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;
@@ -326,8 +326,8 @@ function _hashimotoMerkleProof(
             bytes memory maskedChunkData = maskedData[i];
             assembly {
                 mstore(maskedChunkData, hash0)
-                hash0 := keccak256(maskedChunkData, add(maxKvSize, 0x20))
-                mstore(maskedChunkData, maxKvSize)
+                hash0 := keccak256(maskedChunkData, add(mChunkSize, 0x20))
+                mstore(maskedChunkData, mChunkSize)
             }
         }
         return hash0;
