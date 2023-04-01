@@ -59,7 +59,7 @@ contract TestSystemContractDaggerHashimoto is TestStorageManager, ISystemContrac
 
       function unmaskChunkWithEthash(
         uint64 chunkIdx,
-        bytes32 kvHash,
+        bytes24 kvHash,
         address miner,
         bytes memory maskedChunk
     ) external view override returns (bytes memory){

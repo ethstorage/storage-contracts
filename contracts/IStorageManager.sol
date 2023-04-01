@@ -36,7 +36,7 @@ interface IDaggerHash {
     // Decode the data and return raw data that verfier needs
     function unmaskChunkWithEthash(
         uint64 chunkIdx,
-        bytes32 kvHash,
+        bytes24 kvHash,
         address miner,
         bytes memory maskedChunk
     ) external view returns (bytes memory);

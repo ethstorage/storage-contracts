@@ -5,7 +5,6 @@ import "./MerkleLib.sol";
 import "./IStorageManager.sol";
 
 contract PrecompileManager is ISystemContractDaggerHashimoto {
-    address public constant systemDeployer = 0x0000000000000000000000000000000000033301;
     address public constant sstoragePisaPutRaw = 0x0000000000000000000000000000000000033302;
     address public constant sstoragePisaGetRaw = 0x0000000000000000000000000000000000033303;
     address public constant sstoragePisaUnmaskDaggerData = 0x0000000000000000000000000000000000033304;
