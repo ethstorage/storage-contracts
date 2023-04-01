@@ -382,8 +382,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             uint256 kvIdx = chunkIdx >> chunkLenBits;
             PhyAddr memory kvInfo = kvMap[idxMap[kvIdx]];
 
-            /* NOTICE: kvInfo.hash is the bytes24-hash , the value will be set at the front
-             *          24-byte when it converts to bytes32-hash */
+            /* NOTICE: kvInfo.hash is the high-24-byte-hash , the value will convert to 
+             *          low-24-byte-hash by the systemContract */
             bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(
                 uint64(chunkIdx),
                 kvInfo.hash,
