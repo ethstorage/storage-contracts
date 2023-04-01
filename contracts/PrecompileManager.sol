@@ -38,12 +38,13 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
 
     function unmaskChunkWithEthash(
         uint64 chunkIdx,
-        bytes32 kvHash,
+        bytes24 kvHash,
         address miner,
         bytes memory maskedChunk
     ) public view virtual returns (bytes memory) {
+        uint256 lowKvHash = uint256(uint192(kvHash)); // make sure we will get the low 24byte kvHash 
         (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
-            abi.encode(ENCODE_ETHHASH, chunkIdx, kvHash, miner, maskedChunk)
+            abi.encode(ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
         require(success, "failed to unmaskChunkWithEthash");
         return unmaskedChunk;
