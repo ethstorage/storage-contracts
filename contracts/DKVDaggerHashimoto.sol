@@ -183,9 +183,10 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             return keccak256(unmaskedChunkData) == EMPTY_CHUNK_HASH;
         }
 
-        // we should consider two special cases:
-        // 1. the chunk-leaf is the last chunk with empty being full with zero
-        // 2. the data is not full with the whole chunk-leaf
+        // we should consider three cases:
+        // 1. the chunk-leaf is not included in the minTree with empty being full with zero
+        // 2. the chunk-leaf is included in the minTree with the chunk not full of data
+        // 3. the chunk-leaf is included in the minTree with the chunk full of data
         bytes32 dataHash;
         if ((chunkLeafIdx * mchunkSize) >= kvInfo.kvSize) {
             dataHash = bytes32(0);
