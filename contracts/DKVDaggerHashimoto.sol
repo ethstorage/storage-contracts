@@ -21,8 +21,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         ISystemContractDaggerHashimoto systemContract;
     }
 
-    bytes32 public immutable EMPTY_CHUNK_HASH;
-
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
     uint256 public immutable shardEntryBits;
@@ -33,7 +31,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     uint256 public immutable cutoff;
     uint256 public immutable diffAdjDivisor;
     uint256 public immutable coinbaseShare; // 10000 = 1.0
-    bytes32 public immutable emptyValueHash;
+    bytes32 public immutable EMPTY_VALUE_HASH;
+    bytes32 public immutable EMPTY_CHUNK_HASH;
     ISystemContractDaggerHashimoto public immutable systemContract;
 
     mapping(uint256 => MiningLib.MiningInfo) public infos;
@@ -77,7 +76,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         cutoff = _config.cutoff;
         diffAdjDivisor = _config.diffAdjDivisor;
         coinbaseShare = _config.coinbaseShare;
-        emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
+        EMPTY_VALUE_HASH = keccak256(new bytes(1 << _config.maxKvSizeBits));
         EMPTY_CHUNK_HASH = keccak256(new bytes(1 << _config.chunkSizeBits));
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
