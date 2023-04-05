@@ -18,20 +18,20 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         uint256 off,
         uint256 len
     ) public view virtual returns (bytes memory) {
-        (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(abi.encode(hash, kvIdx, off, len, msg.sender));
+        (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(abi.encode(msg.sender, hash, kvIdx, off, len));
         require(success, "failed to getRaw");
         return data;
     }
 
     // Set a raw data to underlying storage.
     function putRaw(uint256 kvIdx, bytes memory data) public virtual {
-        (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(kvIdx, data, msg.sender));
+        (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(msg.sender, kvIdx, data));
         require(success, "failed to putRaw");
     }
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual {
-        (bool success, ) = address(sstoragePisaRemoveRaw).call(abi.encode(fromKvIdx, toKvIdx, msg.sender));
+        (bool success, ) = address(sstoragePisaRemoveRaw).call(abi.encode(msg.sender, fromKvIdx, toKvIdx));
         require(success, "failed to removeRaw");
     }
 
@@ -43,7 +43,7 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
     ) public view virtual returns (bytes memory) {
         uint256 lowKvHash = uint256(uint192(kvHash)); // make sure we will get the low 24byte kvHash 
         (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
-            abi.encode(ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk, msg.sender)
+            abi.encode(msg.sender, ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
         require(success, "failed to unmaskChunkWithEthash");
         return unmaskedChunk;
