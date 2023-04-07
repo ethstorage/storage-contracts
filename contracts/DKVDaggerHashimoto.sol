@@ -172,7 +172,21 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             assembly {
                 dataHash := keccak256(add(unmaskedChunkData, 0x20), validUnmaskedDataLen)
             }
-            // TODO: check the rest data is zero.
+            uint256 restDataSize = chunkSize - validUnmaskedDataLen;
+            if (restDataSize>0){
+                 bytes memory emptyData = new bytes(restDataSize);
+                bytes32 emptyDataHash;
+                bytes32 restDataHash;
+                bool isEqualZero;
+                assembly {
+                    emptyDataHash := keccak256(add(emptyData,0x20),restDataSize)
+                    restDataHash := keccak256(add(add(unmaskedChunkData, 0x20),validUnmaskedDataLen),restDataSize)
+                    isEqualZero := eq(emptyDataHash,restDataHash)
+                }
+                if (!isEqualZero) {
+                    return isEqualZero;
+                }
+            }
         } else {
             dataHash = keccak256(unmaskedChunkData);
         }
