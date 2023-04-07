@@ -527,6 +527,13 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let result_2 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_2, kvInfo_0, proof_2, chunkData_2);
     expect(result_2).to.eq(true);
 
+    // sample chunk2 when the rest of chunk data which excceeds the KVSIZE is not zero. 
+    let chunkData_2_failed = Buffer.alloc(CHUNK_SIZE, 0);
+    let mixData = Buffer.alloc(100,1)
+    mixData.copy(chunkData_2_failed,1905,0,100)
+    let result_2_failed = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_2, kvInfo_0, proof_2, chunkData_2_failed);
+    expect(result_2_failed).to.eq(false);
+
     //sample chunk 3
     const SAMPLE_CHUNK_3 = 3;
     const proof_3 = await ml.getProof(dataList[kvIdx_0], CHUNK_SIZE, chunkLenBits, SAMPLE_CHUNK_3);
