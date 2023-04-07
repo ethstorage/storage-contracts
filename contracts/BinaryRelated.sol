@@ -16,9 +16,8 @@ library BinaryRelated {
     }
 
     function findNextPowerOf2(uint256 n) internal pure returns (uint256) {
-        n = n-1;
-        while ((n & (n-1) != 0)) n = n & (n-1);
+        n = n - 1;
+        while ((n & (n - 1) != 0)) n = n & (n - 1);
         return n << 1;
     }
-
 }

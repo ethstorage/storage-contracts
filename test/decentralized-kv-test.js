@@ -3,9 +3,9 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /* declare const key */
-const key1 = "0x0000000000000000000000000000000000000000000000000000000000000001"
-const key2 = "0x0000000000000000000000000000000000000000000000000000000000000002"
-const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003"
+const key1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
+const key2 = "0x0000000000000000000000000000000000000000000000000000000000000002";
+const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
 describe("DecentralizedKV Test", function () {
   it("put/get/remove", async function () {
@@ -17,9 +17,7 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x11223344"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x11223344");
     expect(await kv.get(key1, 1, 2)).to.equal("0x2233");
     expect(await kv.get(key1, 2, 3)).to.equal("0x3344");
 
@@ -37,17 +35,11 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x11223344"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x11223344");
 
     await kv.put(key1, "0x772233445566");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x77223344"
-    );
-    expect(await kv.get(key1, 0, 6)).to.equal(
-      "0x772233445566"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x77223344");
+    expect(await kv.get(key1, 0, 6)).to.equal("0x772233445566");
 
     await kv.put(key1, "0x8899");
     expect(await kv.get(key1, 0, 4)).to.equal("0x8899");
@@ -76,9 +68,7 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
-    await expect(
-      kv.put(key1, "0x11223344")
-    ).to.be.revertedWith("not enough payment");
+    await expect(kv.put(key1, "0x11223344")).to.be.revertedWith("not enough payment");
     await expect(
       kv.put(key1, "0x11223344", {
         value: "900000000000000000",
@@ -123,9 +113,7 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
-    await expect(
-      kv.put(key1, "0x11223344")
-    ).to.be.revertedWith("not enough payment");
+    await expect(kv.put(key1, "0x11223344")).to.be.revertedWith("not enough payment");
     await expect(
       kv.put(key1, "0x11223344", {
         value: "900000000000000000",

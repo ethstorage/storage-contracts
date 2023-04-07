@@ -18,7 +18,9 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         uint256 off,
         uint256 len
     ) public view virtual returns (bytes memory) {
-        (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(abi.encode(msg.sender, hash, kvIdx, off, len));
+        (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(
+            abi.encode(msg.sender, hash, kvIdx, off, len)
+        );
         require(success, "failed to getRaw");
         return data;
     }
@@ -41,7 +43,7 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         address miner,
         bytes memory maskedChunk
     ) public view virtual returns (bytes memory) {
-        uint256 lowKvHash = uint256(uint192(kvHash)); // make sure we will get the low 24byte kvHash 
+        uint256 lowKvHash = uint256(uint192(kvHash)); // make sure we will get the low 24byte kvHash
         (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
             abi.encode(msg.sender, ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
@@ -49,10 +51,5 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         return unmaskedChunk;
     }
 
-     function unmaskWithEthash(
-        uint256 kvIdx,
-        bytes memory maskedData
-    ) external view returns (bytes memory){
-
-    }
+    function unmaskWithEthash(uint256 kvIdx, bytes memory maskedData) external view returns (bytes memory) {}
 }

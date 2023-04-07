@@ -290,7 +290,7 @@ describe("rewardMiner", function () {
   it("rewardMiner with 0.5 dcf/y", async function () {
     const [owner, addr1, addr2] = await ethers.getSigners();
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
-    
+
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
     const sc = await SystemContract.deploy(32);
     await sc.deployed();

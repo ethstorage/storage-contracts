@@ -39,8 +39,14 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
-                         _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(
+            _config.systemContract,
+            1 << _config.maxKvSizeBits,
+            1 << _config.chunkSizeBits,
+            _startTime,
+            _storageCost,
+            _dcfFactor
+        )
     {
         require(_config.shardSizeBits >= _config.maxKvSizeBits, "config size mismatch");
         require(_config.randomChecks > 0, "randomChecks must be nonzero");

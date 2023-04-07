@@ -32,7 +32,7 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         uint256 nonce,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
-    ) public override{
+    ) public override {
         return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, proofsDim2, maskedData);
     }
 
@@ -90,7 +90,7 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
 
-    function getKVInfo(uint256 kvIdx) public view returns(PhyAddr memory ){
+    function getKVInfo(uint256 kvIdx) public view returns (PhyAddr memory) {
         return kvMap[idxMap[kvIdx]];
     }
 }
