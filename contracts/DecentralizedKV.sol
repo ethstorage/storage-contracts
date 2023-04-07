@@ -106,11 +106,15 @@ contract DecentralizedKV {
         paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
+        putRawByDKV(paddr.kvIdx, data);
+    }
+
+    function putRawByDKV(uint256 kvIdx, bytes memory data) public virtual {
         // Weird that cannot call precompiled contract like this (solidity issue?)
         // storageManager.putRaw(paddr.kvIdx, data);
         // Use call directly instead.
-        (bool success, ) = address(storageManager).call(
-            abi.encodeWithSelector(IStorageManager.putRaw.selector, paddr.kvIdx, data)
+        (bool success, ) = address(storageManager).delegatecall(
+            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx, data)
         );
         require(success, "failed to putRaw");
     }

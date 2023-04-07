@@ -79,4 +79,14 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
     ) public {
         _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
+
+     function putRawByDKV(uint256 kvIdx, bytes memory data) public virtual override{
+        // Weird that cannot call precompiled contract like this (solidity issue?)
+        // storageManager.putRaw(paddr.kvIdx, data);
+        // Use call directly instead.
+        (bool success, ) = address(storageManager).call(
+            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx, data)
+        );
+        require(success, "failed to putRaw");
+    }
 }

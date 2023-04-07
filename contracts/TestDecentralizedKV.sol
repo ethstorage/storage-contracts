@@ -23,4 +23,14 @@ contract TestDecentralizedKV is DecentralizedKV {
     function upfrontPayment() public view override returns (uint256) {
         return _upfrontPayment(currentTimestamp);
     }
+
+    function putRawByDKV(uint256 kvIdx, bytes memory data) public virtual override{
+        // Weird that cannot call precompiled contract like this (solidity issue?)
+        // storageManager.putRaw(paddr.kvIdx, data);
+        // Use call directly instead.
+        (bool success, ) = address(storageManager).call(
+            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx, data)
+        );
+        require(success, "failed to putRaw");
+    }
 }
