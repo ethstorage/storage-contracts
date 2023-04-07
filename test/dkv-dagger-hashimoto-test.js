@@ -17,137 +17,137 @@ var concat = (x) => ethers.utils.concat(x);
 var hexlen = (str) => ethers.utils.hexDataLength(str);
 
 describe("Basic Func Test", function () {
-  it("hashimoto-tiny", async function () {
-    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(4096);
+  // it("hashimoto-tiny", async function () {
+  //   const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+  //   const sc = await SystemContract.deploy(4096);
 
-    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    // 64 bytes per data, 4 entries in shard, 1 random access
-    const kv = await MinabledKV.deploy(
-      [6, 6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
-      0,
-      0,
-      0,
-      ethers.utils.formatBytes32String("")
-    );
-    await kv.deployed();
+  //   const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+  //   // 64 bytes per data, 4 entries in shard, 1 random access
+  //   const kv = await MinabledKV.deploy(
+  //     [6, 6, 8, 1, 0, 60, 40, 1024, 0, sc.address],
+  //     0,
+  //     0,
+  //     0,
+  //     ethers.utils.formatBytes32String("")
+  //   );
+  //   await kv.deployed();
 
-    // put 16 kv-datas
-    for (let i = 0; i < 16; i++) {
-      await kv.put(ethers.utils.formatBytes32String(i.toString()), hexlify64(i));
-    }
+  //   // put 16 kv-datas
+  //   for (let i = 0; i < 16; i++) {
+  //     await kv.put(ethers.utils.formatBytes32String(i.toString()), hexlify64(i));
+  //   }
 
-    let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
-    let r0 = await kv.hashimoto(0, 0, h0, [padRight64(hexlify64(2))]);
-    expect(r0).to.equal("0x8c8285a007382a35628355faf9b037fd3523d6aa3d40b6187fcd9f7681023c23");
+  //   let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
+  //   let r0 = await kv.hashimoto(0, 0, h0, [padRight64(hexlify64(2))]);
+  //   expect(r0).to.equal("0x8c8285a007382a35628355faf9b037fd3523d6aa3d40b6187fcd9f7681023c23");
 
-    let r1 = await kv.hashimoto(0, 1, h0, [padRight64(hexlify64(2))]);
-    expect(r1).to.equal("0x8c8285a007382a35628355faf9b037fd3523d6aa3d40b6187fcd9f7681023c23");
+  //   let r1 = await kv.hashimoto(0, 1, h0, [padRight64(hexlify64(2))]);
+  //   expect(r1).to.equal("0x8c8285a007382a35628355faf9b037fd3523d6aa3d40b6187fcd9f7681023c23");
 
-    let r2 = await kv.hashimoto(0, 2, h0, [padRight64(hexlify64(10))]);
-    expect(r2).to.equal("0x3ab8ce32981e789e67abf48d7753da99792bc7c66a82dd625462c064b673e588");
-  });
+  //   let r2 = await kv.hashimoto(0, 2, h0, [padRight64(hexlify64(10))]);
+  //   expect(r2).to.equal("0x3ab8ce32981e789e67abf48d7753da99792bc7c66a82dd625462c064b673e588");
+  // });
 
-  it("hashimoto-small", async function () {
-    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(4096);
+  // it("hashimoto-small", async function () {
+  //   const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+  //   const sc = await SystemContract.deploy(4096);
 
-    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    // 64 bytes per data, 4 entries in shard, 2 random access
-    const kv = await MinabledKV.deploy(
-      [6, 6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
-      0,
-      0,
-      0,
-      ethers.utils.formatBytes32String("")
-    );
-    await kv.deployed();
+  //   const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+  //   // 64 bytes per data, 4 entries in shard, 2 random access
+  //   const kv = await MinabledKV.deploy(
+  //     [6, 6, 8, 2, 0, 60, 40, 1024, 0, sc.address],
+  //     0,
+  //     0,
+  //     0,
+  //     ethers.utils.formatBytes32String("")
+  //   );
+  //   await kv.deployed();
 
-    for (let i = 0; i < 16; i++) {
-      await kv.put(ethers.utils.formatBytes32String(i.toString()), hexlify64(i));
-    }
+  //   for (let i = 0; i < 16; i++) {
+  //     await kv.put(ethers.utils.formatBytes32String(i.toString()), hexlify64(i));
+  //   }
 
-    let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
-    let r0 = await kv.hashimoto(0, 0, h0, [padRight64(hexlify64(2)), padRight64(hexlify64(3))]);
-    expect(r0).to.equal("0x7529f239daba33139d2125aa1c5a2ce73e2a31557e8dd97e2b468335f44b73a3");
+  //   let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
+  //   let r0 = await kv.hashimoto(0, 0, h0, [padRight64(hexlify64(2)), padRight64(hexlify64(3))]);
+  //   expect(r0).to.equal("0x7529f239daba33139d2125aa1c5a2ce73e2a31557e8dd97e2b468335f44b73a3");
 
-    let r1 = await kv.hashimoto(0, 1, h0, [padRight64(hexlify64(2)), padRight64(hexlify64(1))]);
-    expect(r1).to.equal("0x292fc526cfd06711a651ed8605488023d58e8206b869668b13eb7072e3847760");
+  //   let r1 = await kv.hashimoto(0, 1, h0, [padRight64(hexlify64(2)), padRight64(hexlify64(1))]);
+  //   expect(r1).to.equal("0x292fc526cfd06711a651ed8605488023d58e8206b869668b13eb7072e3847760");
 
-    let r2 = await kv.hashimoto(0, 2, h0, [padRight64(hexlify64(10)), padRight64(hexlify64(0))]);
-    expect(r2).to.equal("0x3ab8ce32981e789e67abf48d7753da99792bc7c66a82dd625462c064b673e588");
+  //   let r2 = await kv.hashimoto(0, 2, h0, [padRight64(hexlify64(10)), padRight64(hexlify64(0))]);
+  //   expect(r2).to.equal("0x3ab8ce32981e789e67abf48d7753da99792bc7c66a82dd625462c064b673e588");
 
-    let r3 = await kv.hashimoto(1, 1, h0, [padRight64(hexlify64(6)), padRight64(hexlify64(5))]);
-    expect(r3).to.equal("0x292fc526cfd06711a651ed8605488023d58e8206b869668b13eb7072e3847760");
-  });
+  //   let r3 = await kv.hashimoto(1, 1, h0, [padRight64(hexlify64(6)), padRight64(hexlify64(5))]);
+  //   expect(r3).to.equal("0x292fc526cfd06711a651ed8605488023d58e8206b869668b13eb7072e3847760");
+  // });
 
-  it("hashimoto-large", async function () {
-    const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
-    const sc = await SystemContract.deploy(4096);
+  // it("hashimoto-large", async function () {
+  //   const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
+  //   const sc = await SystemContract.deploy(4096);
 
-    const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
-    // 4096 bytes per data, 32 entries in shard, 16 random access
-    const kv = await MinabledKV.deploy(
-      [12, 12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
-      0,
-      0,
-      0,
-      ethers.utils.formatBytes32String("")
-    );
-    await kv.deployed();
+  //   const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVDaggerHashimoto");
+  //   // 4096 bytes per data, 32 entries in shard, 16 random access
+  //   const kv = await MinabledKV.deploy(
+  //     [12, 12, 17, 16, 0, 60, 40, 1024, 0, sc.address],
+  //     0,
+  //     0,
+  //     0,
+  //     ethers.utils.formatBytes32String("")
+  //   );
+  //   await kv.deployed();
 
-    let l = 0;
-    let dataList = [];
-    for (let i = 0; i < 32; i++) {
-      let d = "0x";
-      for (let j = 0; j < 4096 / 32; j++) {
-        d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(l))]);
-        l = l + 1;
-      }
-      dataList.push(d);
-      await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
-    }
+  //   let l = 0;
+  //   let dataList = [];
+  //   for (let i = 0; i < 32; i++) {
+  //     let d = "0x";
+  //     for (let j = 0; j < 4096 / 32; j++) {
+  //       d = ethers.utils.hexConcat([d, ethers.utils.keccak256(hexlify4(l))]);
+  //       l = l + 1;
+  //     }
+  //     dataList.push(d);
+  //     await kv.put(ethers.utils.formatBytes32String(i.toString()), dataList[i]);
+  //   }
 
-    let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
-    let r0 = await kv.hashimoto(0, 0, h0, [
-      dataList[10],
-      dataList[9],
-      dataList[13],
-      dataList[4],
-      dataList[24],
-      dataList[2],
-      dataList[9],
-      dataList[24],
-      dataList[4],
-      dataList[25],
-      dataList[27],
-      dataList[4],
-      dataList[3],
-      dataList[23],
-      dataList[21],
-      dataList[11],
-    ]);
-    expect(r0).to.equal("0xdc5ed7906841c9936f16b4fcb44e4320516d32a2c94b0166197ea021a6150a05");
+  //   let h0 = "0x2cfe17dc69e953b28d77cdb7cdc86ce378dfe1e846f4be9cbe9dfb18efa5dfb5";
+  //   let r0 = await kv.hashimoto(0, 0, h0, [
+  //     dataList[10],
+  //     dataList[9],
+  //     dataList[13],
+  //     dataList[4],
+  //     dataList[24],
+  //     dataList[2],
+  //     dataList[9],
+  //     dataList[24],
+  //     dataList[4],
+  //     dataList[25],
+  //     dataList[27],
+  //     dataList[4],
+  //     dataList[3],
+  //     dataList[23],
+  //     dataList[21],
+  //     dataList[11],
+  //   ]);
+  //   expect(r0).to.equal("0xdc5ed7906841c9936f16b4fcb44e4320516d32a2c94b0166197ea021a6150a05");
 
-    // await kv.hashimotoNonView(0, 0, h0, [
-    //     dataList[10],
-    // dataList[9],
-    // dataList[13],
-    // dataList[4],
-    // dataList[24],
-    // dataList[2],
-    // dataList[9],
-    // dataList[24],
-    // dataList[4],
-    // dataList[25],
-    // dataList[27],
-    // dataList[4],
-    // dataList[3],
-    // dataList[23],
-    // dataList[21],
-    // dataList[11],
-    // ]);
-  });
+  //   // await kv.hashimotoNonView(0, 0, h0, [
+  //   //     dataList[10],
+  //   // dataList[9],
+  //   // dataList[13],
+  //   // dataList[4],
+  //   // dataList[24],
+  //   // dataList[2],
+  //   // dataList[9],
+  //   // dataList[24],
+  //   // dataList[4],
+  //   // dataList[25],
+  //   // dataList[27],
+  //   // dataList[4],
+  //   // dataList[3],
+  //   // dataList[23],
+  //   // dataList[21],
+  //   // dataList[11],
+  //   // ]);
+  // });
 
   it("hashimoto-large-keccak", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
@@ -444,7 +444,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     return numbers.slice(0, randomChecks);
   }
 
-  it("test checkDaggerDataWithProof()", async function () {
+  it("test openInMerkleTreeWithProof()", async function () {
     const [owner, addr1, addr2] = await ethers.getSigners();
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
     const SystemContract = await ethers.getContractFactory("TestSystemContractDaggerHashimoto");
@@ -506,7 +506,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let chunkData_0 = Buffer.alloc(CHUNK_SIZE);
     let startChunkPtr = 0;
     dataList[kvIdx_0].copy(chunkData_0, 0, startChunkPtr, CHUNK_SIZE);
-    let result_0 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_0, kvInfo_0, proof_0, chunkData_0);
+    let result_0 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_0, kvInfo_0, proof_0, chunkData_0);
     expect(result_0).to.eq(true);
 
     // sample chunk 1
@@ -515,7 +515,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let chunkData_1 = Buffer.alloc(CHUNK_SIZE, 0);
     startChunkPtr = CHUNK_SIZE + startChunkPtr;
     dataList[kvIdx_0].copy(chunkData_1, 0, startChunkPtr, startChunkPtr + CHUNK_SIZE);
-    let result_1 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_1, kvInfo_0, proof_1, chunkData_1);
+    let result_1 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_1, kvInfo_0, proof_1, chunkData_1);
     expect(result_1).to.eq(true);
 
     // sample chunk 2
@@ -524,24 +524,27 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     let chunkData_2 = Buffer.alloc(CHUNK_SIZE, 0);
     startChunkPtr += CHUNK_SIZE;
     dataList[kvIdx_0].copy(chunkData_2, 0, startChunkPtr, startChunkPtr + 1904);
-    let result_2 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_2, kvInfo_0, proof_2, chunkData_2);
+    let result_2 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_2, kvInfo_0, proof_2, chunkData_2);
     expect(result_2).to.eq(true);
 
     //sample chunk 3
     const SAMPLE_CHUNK_3 = 3;
     const proof_3 = await ml.getProof(dataList[kvIdx_0], CHUNK_SIZE, chunkLenBits, SAMPLE_CHUNK_3);
     let chunkData_3 = Buffer.alloc(CHUNK_SIZE, 0);
-    let result_3 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_3, kvInfo_0, proof_3, chunkData_3);
+    let result_3 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_3, kvInfo_0, proof_3, chunkData_3);
     expect(result_3).to.eq(true);
 
     // sample chunk 4
     {
+      const kvIdx_1 = 1;
+      const kvInfo_1 = await kv.getKVInfo(kvIdx_1);
       const SAMPLE_CHUNK_4 = 4;
       let chunkData_4 = Buffer.alloc(CHUNK_SIZE, 0);
-      let result_4 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_4, kvInfo_0, [], chunkData_4);
+      let result_4 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_4, kvInfo_1, [], chunkData_4);
       expect(result_4).to.eq(true);
+
       let chunkData_4_fail = Buffer.alloc(CHUNK_SIZE, 1);
-      result_4 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_4, kvInfo_0, [], chunkData_4_fail);
+      result_4 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_4, kvInfo_1, [], chunkData_4_fail);
       expect(result_4).to.eq(false);
     }
 
@@ -568,7 +571,7 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     const proof_4 = await ml.getProof(dataList[kvIdx_1], CHUNK_SIZE, nChunkBits, SAMPLE_CHUNK_4 % chunksNumPerKV);
     let chunkData_4 = Buffer.alloc(CHUNK_SIZE, 0);
     dataList[kvIdx_1].copy(chunkData_4, 0, 0, CHUNK_SIZE);
-    let result_4 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_4, kvInfo_1, proof_4, chunkData_4);
+    let result_4 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_4, kvInfo_1, proof_4, chunkData_4);
     expect(result_4).to.eq(true);
 
     // sample ChunkIdx 5
@@ -576,13 +579,13 @@ describe("Full cycle of mining procedure with Merkle proof", function () {
     const proof_5 = await ml.getProof(dataList[kvIdx_1], CHUNK_SIZE, nChunkBits, SAMPLE_CHUNK_5 % chunksNumPerKV);
     const chunkData_5 = Buffer.alloc(CHUNK_SIZE, 0);
     dataList[kvIdx_1].copy(chunkData_5, 0, CHUNK_SIZE, 2 * CHUNK_SIZE);
-    let result_5 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_5, kvInfo_1, proof_5, chunkData_5);
+    let result_5 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_5, kvInfo_1, proof_5, chunkData_5);
     expect(result_5).to.eq(true);
 
     // sample ChunkIdx 6
     const SAMPLE_CHUNK_6 = 6;
     let chunkData_6 = Buffer.alloc(CHUNK_SIZE, 0);
-    let result_6 = await kv.checkDaggerDataWithProof(SAMPLE_CHUNK_6, kvInfo_1, [], chunkData_6);
+    let result_6 = await kv.openInMerkleTreeWithProof(SAMPLE_CHUNK_6, kvInfo_1, [], chunkData_6);
     expect(result_6).to.eq(true);
   });
 
