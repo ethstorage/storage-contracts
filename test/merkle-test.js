@@ -41,10 +41,10 @@ describe("MerkleLib Test", function () {
 
     const d = crypto.randomBytes(4096 * 2);
     const root = await ml.merkleRoot(d, 4096, 1);
-    const leftSliceProof = await ml.getProof(d,4096,1,0);
-    expect(await ml.verify(d.slice(0,4096), 0, root, leftSliceProof)).to.be.true;
-    const rightSliceProof = await ml.getProof(d,4096,1,1);
-    expect(await ml.verify(d.slice(4096,8192), 1, root, rightSliceProof)).to.be.true;
+    const leftSliceProof = await ml.getProof(d, 4096, 1, 0);
+    expect(await ml.verify(d.slice(0, 4096), 0, root, leftSliceProof)).to.be.true;
+    const rightSliceProof = await ml.getProof(d, 4096, 1, 1);
+    expect(await ml.verify(d.slice(4096, 8192), 1, root, rightSliceProof)).to.be.true;
   });
 
   it("partial random data verify0", async function () {
@@ -123,32 +123,30 @@ describe("MerkleLib Test", function () {
     await expect(ml.getProof(data, 64, 3, 10)).to.be.revertedWith("index out of scope");
 
     let proof = await ml.getProof(data, 64, 3, 0);
-    expect(await ml.verify(data.slice(0,64), 0, root, proof)).to.equal(true);
+    expect(await ml.verify(data.slice(0, 64), 0, root, proof)).to.equal(true);
     // out of bound index
-    await expect(ml.verify(data.slice(0,64), 8, root, proof)).to.be.revertedWith("chunkId overflows");
-    await expect(ml.verify(data.slice(0,64), 10, root, proof)).to.be.revertedWith("chunkId overflows");
+    await expect(ml.verify(data.slice(0, 64), 8, root, proof)).to.be.revertedWith("chunkId overflows");
+    await expect(ml.verify(data.slice(0, 64), 10, root, proof)).to.be.revertedWith("chunkId overflows");
   });
 
-  it("check getMaxLeafsNum()",async function () {
-
+  it("check getMaxLeafsNum()", async function () {
     const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
     const ml = await MerkleLib.deploy();
     await ml.deployed();
 
-    let leafsNum = await ml.getMaxLeafsNum(8192,2048);
+    let leafsNum = await ml.getMaxLeafsNum(8192, 2048);
     expect(leafsNum).to.eq(4);
 
-    leafsNum = await ml.getMaxLeafsNum(4096,2048);
+    leafsNum = await ml.getMaxLeafsNum(4096, 2048);
     expect(leafsNum).to.eq(2);
 
-    leafsNum = await ml.getMaxLeafsNum(6000,2048);
+    leafsNum = await ml.getMaxLeafsNum(6000, 2048);
     expect(leafsNum).to.eq(4);
 
-    leafsNum = await ml.getMaxLeafsNum(3000,2048);
+    leafsNum = await ml.getMaxLeafsNum(3000, 2048);
     expect(leafsNum).to.eq(2);
 
-    leafsNum = await ml.getMaxLeafsNum(12288,2048);
+    leafsNum = await ml.getMaxLeafsNum(12288, 2048);
     expect(leafsNum).to.eq(8);
-
-  })
+  });
 });

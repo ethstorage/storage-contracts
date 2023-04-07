@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 var ToBig = (x) => ethers.BigNumber.from(x);
 var hexlify4 = (x) => ethers.utils.hexZeroPad(ethers.utils.hexlify(x), 4);
-const testKey = "0x0000000000000000000000000000000000000000000000000000000000000001"
+const testKey = "0x0000000000000000000000000000000000000000000000000000000000000001";
 /*
 describe("DaggerHash Test", function () {
   it("small-value", async function () {

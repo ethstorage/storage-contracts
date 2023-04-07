@@ -41,17 +41,11 @@ interface IDaggerHash {
         bytes memory maskedChunk
     ) external view returns (bytes memory);
 
-
     // Another option is to use Verify Delay Function(VDF),
     // such as MiMC. For saving gas cost, those are not materialized for now
-    function unmaskWithEthash(
-        uint256 kvIdx,
-        bytes memory maskedData
-    ) external view returns (bytes memory);
-
+    function unmaskWithEthash(uint256 kvIdx, bytes memory maskedData) external view returns (bytes memory);
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {}
 
 interface ISystemContractDaggerHashimoto is IStorageManager, IDaggerHash {}
-

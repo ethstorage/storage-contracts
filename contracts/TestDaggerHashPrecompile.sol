@@ -74,7 +74,7 @@ contract TestKVWithDaggerHash is TestDecentralizedKV {
 
         return paddr.hash == bytes24(keccak256(maskedData));
     }
-/*
+    /*
     function checkDaggerHashNormal(bytes32 key, bytes memory maskedData) public view returns (bool) {
         // Obtain the value of the physical address directly from storage slot.
         bytes32 skey = keccak256(abi.encode(msg.sender, key));
