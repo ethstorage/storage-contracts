@@ -184,7 +184,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         }
 
         // we should consider three cases:
-        // 1. the chunk-leaf is not included in the minTree with empty being full with zero
+        // 1. the chunk-leaf is included in the minTree with empty being full with zero
         // 2. the chunk-leaf is included in the minTree with the chunk not full of data
         // 3. the chunk-leaf is included in the minTree with the chunk full of data
         bytes32 dataHash;
