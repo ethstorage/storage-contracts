@@ -36,24 +36,6 @@ contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
         return _mine(currentTimestamp, startShardId, shardLen, miner, minedTs, nonce, proofsDim2, maskedData);
     }
 
-    function hashimoto(
-        uint256 startShardId,
-        uint256 shardLenBits,
-        bytes32 hash0,
-        bytes[] memory maskedData
-    ) public view returns (bytes32) {
-        return _hashimoto(startShardId, shardLenBits, hash0, maskedData);
-    }
-
-    function hashimotoNonView(
-        uint256 startShardId,
-        uint256 shardLenBits,
-        bytes32 hash0,
-        bytes[] memory maskedData
-    ) public returns (bytes32) {
-        return _hashimoto(startShardId, shardLenBits, hash0, maskedData);
-    }
-
     function hashimotoKeccak256NonView(
         uint256 startShardId,
         uint256 shardLenBits,

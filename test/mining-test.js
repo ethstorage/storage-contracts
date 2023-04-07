@@ -11,7 +11,7 @@ var keccak256 = (x) => ethers.utils.keccak256(x);
 describe("Basic Func Test", function () {
   it("calculateRandomAccessSmall", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -48,7 +48,7 @@ describe("Basic Func Test", function () {
 
   it("calculateRandomAccessLarge", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(8);
+    const sc = await SystemContract.deploy(8,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -75,7 +75,7 @@ describe("Basic Func Test", function () {
 
   it("checkProofOfRandomAccess", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -130,7 +130,7 @@ describe("Basic Func Test", function () {
 
   it("calculateDiffAndInitHash", async function () {
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy([5, 5, 8, 6, 10, 60, 40, 1024, 0, sc.address], 0, 0, 0, formatB32Str("genesis"));
@@ -156,7 +156,7 @@ describe("rewardMiner", function () {
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
 
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -189,7 +189,7 @@ describe("rewardMiner", function () {
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
 
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -259,7 +259,7 @@ describe("rewardMiner", function () {
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
 
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(
@@ -292,7 +292,7 @@ describe("rewardMiner", function () {
     let wallet = ethers.Wallet.createRandom().connect(owner.provider);
 
     const SystemContract = await ethers.getContractFactory("TestSystemContract");
-    const sc = await SystemContract.deploy(32);
+    const sc = await SystemContract.deploy(32,4096);
     await sc.deployed();
     const MinabledKV = await ethers.getContractFactory("TestDecentralizedKVMinable");
     const kv = await MinabledKV.deploy(

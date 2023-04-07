@@ -10,7 +10,7 @@ const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003
 describe("DecentralizedKV Test", function () {
   it("put/get/remove", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
@@ -28,7 +28,7 @@ describe("DecentralizedKV Test", function () {
 
   it("put/get with replacement", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
@@ -53,7 +53,7 @@ describe("DecentralizedKV Test", function () {
     let wallet = ethers.Wallet.createRandom().connect(addr0.provider);
 
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.5 discount rate per second
@@ -98,7 +98,7 @@ describe("DecentralizedKV Test", function () {
 
   it("put with payment and yearly 0.9 dcf", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.90 discount rate per year
@@ -133,7 +133,7 @@ describe("DecentralizedKV Test", function () {
     const [addr0, addr1] = await ethers.getSigners();
 
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.5 discount rate per second

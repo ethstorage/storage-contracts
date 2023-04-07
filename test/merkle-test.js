@@ -128,25 +128,4 @@ describe("MerkleLib Test", function () {
     await expect(ml.verify(data.slice(0, 64), 8, root, proof)).to.be.revertedWith("chunkId overflows");
     await expect(ml.verify(data.slice(0, 64), 10, root, proof)).to.be.revertedWith("chunkId overflows");
   });
-
-  it("check getMaxLeafsNum()", async function () {
-    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
-    const ml = await MerkleLib.deploy();
-    await ml.deployed();
-
-    let leafsNum = await ml.getMaxLeafsNum(8192, 2048);
-    expect(leafsNum).to.eq(4);
-
-    leafsNum = await ml.getMaxLeafsNum(4096, 2048);
-    expect(leafsNum).to.eq(2);
-
-    leafsNum = await ml.getMaxLeafsNum(6000, 2048);
-    expect(leafsNum).to.eq(4);
-
-    leafsNum = await ml.getMaxLeafsNum(3000, 2048);
-    expect(leafsNum).to.eq(2);
-
-    leafsNum = await ml.getMaxLeafsNum(12288, 2048);
-    expect(leafsNum).to.eq(8);
-  });
 });
