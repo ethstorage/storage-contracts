@@ -8,8 +8,9 @@ async function main(){
       );
 
       const scAddr= "0x0000000000000000000000000000000003330003";
+      //maxKvSizeBits chunkSizeBits  shardSizeBits(18)
       const kv = await MinabledKV.deploy(
-        [17, 12, 35, 16, 100, 300, 40, 1024, 1000, scAddr],
+        [12, 12, 18, 16, 100, 300, 40, 1024, 1000, scAddr],
         0,
         0,
         0,
