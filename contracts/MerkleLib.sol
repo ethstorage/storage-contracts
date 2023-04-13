@@ -35,12 +35,6 @@ library MerkleLib {
         return nodes[0];
     }
 
-    function getMaxLeafsNum(uint256 dataLen, uint256 chunkSize) internal pure returns (uint256) {
-        uint256 n = (dataLen + chunkSize - 1) / chunkSize;
-        uint256 nChunks = n <= 1 ? 1 : BinaryRelated.findNextPowerOf2(n);
-        return nChunks;
-    }
-
     function merkleRootWithMinTree(bytes memory data, uint256 chunkSize) internal pure returns (bytes32) {
         if (data.length == 0) return bytes32(0);
         uint256 n = (data.length + chunkSize - 1) / chunkSize;
