@@ -31,9 +31,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     uint256 public immutable cutoff;
     uint256 public immutable diffAdjDivisor;
     uint256 public immutable coinbaseShare; // 10000 = 1.0
-    bytes32 public immutable EMPTY_VALUE_HASH;
-    bytes32 public immutable EMPTY_CHUNK_HASH;
-    ISystemContractDaggerHashimoto public immutable systemContract;
+    bytes32 public immutable emptyValueHash;
+    bytes32 public immutable emptyChunkHash;
 
     mapping(uint256 => MiningLib.MiningInfo) public infos;
 
@@ -46,7 +45,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     )
         payable
         DecentralizedKV(
-            _config.systemContract,
             1 << _config.maxKvSizeBits,
             1 << _config.chunkSizeBits,
             _startTime,
@@ -59,7 +57,6 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         require(_config.maxKvSizeBits >= _config.chunkSizeBits, "maxKvSize too small");
         require(_config.randomChecks > 0, "At least one checkpoint needed");
 
-        systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
         shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
@@ -70,8 +67,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         cutoff = _config.cutoff;
         diffAdjDivisor = _config.diffAdjDivisor;
         coinbaseShare = _config.coinbaseShare;
-        EMPTY_VALUE_HASH = keccak256(new bytes(1 << _config.maxKvSizeBits));
-        EMPTY_CHUNK_HASH = keccak256(new bytes(1 << _config.chunkSizeBits));
+        emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
+        emptyChunkHash = keccak256(new bytes(1 << _config.chunkSizeBits));
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
         infos[0].miningHash = _genesisHash;
@@ -166,7 +163,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         // 3. the chunk-leaf is included in the minTree with the chunk full of data
         bytes32 dataHash;
         if (chunkLeafIdx * chunkSize >= kvInfo.kvSize) {
-            return keccak256(unmaskedChunkData) == EMPTY_CHUNK_HASH;
+            return keccak256(unmaskedChunkData) == emptyChunkHash;
         } else if ((kvInfo.kvSize - 1) / chunkSize == chunkLeafIdx) {
             uint256 validUnmaskedDataLen = kvInfo.kvSize - chunkLeafIdx * chunkSize;
             assembly {
@@ -174,17 +171,15 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             }
             uint256 restDataSize = chunkSize - validUnmaskedDataLen;
             if (restDataSize>0){
-                 bytes memory emptyData = new bytes(restDataSize);
+                bytes memory emptyData = new bytes(restDataSize);
                 bytes32 emptyDataHash;
                 bytes32 restDataHash;
-                bool isEqualZero;
                 assembly {
                     emptyDataHash := keccak256(add(emptyData,0x20),restDataSize)
                     restDataHash := keccak256(add(add(unmaskedChunkData, 0x20),validUnmaskedDataLen),restDataSize)
-                    isEqualZero := eq(emptyDataHash,restDataHash)
                 }
-                if (!isEqualZero) {
-                    return isEqualZero;
+                if (emptyDataHash != restDataHash) {
+                    return false;
                 }
             }
         } else {
@@ -224,7 +219,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             require(maskedData[i].length == maxKvSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
-            bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
+            bytes memory data = systemUnmaskWithEthash(kvIdx, maskedData[i]);
             require(bytes24(keccak256(data)) == kvMap[idxMap[kvIdx]].hash, "invalid access proof");
 
             assembly {
@@ -263,7 +258,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
             /* NOTICE: kvInfo.hash is the high-24-byte-hash , the value will convert to
              *          low-24-byte-hash by the systemContract */
-            bytes memory unmaskedData = systemContract.unmaskChunkWithEthash(
+            bytes memory unmaskedData = systemUnmaskChunkWithEthash(
                 uint64(chunkIdx),
                 kvInfo.hash,
                 miner,
