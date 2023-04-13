@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "./IStorageManager.sol";
 import "./MerkleLib.sol";
 import "./BinaryRelated.sol";
+import "./PrecompileManager.sol";
 
-contract DecentralizedKV {
+contract DecentralizedKV is PrecompileManager{
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
     // Discounted cash flow factor in seconds
     // E.g., 0.85 yearly discount in second = 0.9999999948465585 = 340282365167313208607671216367074279424 in Q128.128
@@ -14,8 +15,6 @@ contract DecentralizedKV {
     uint256 public immutable maxKvSize;
     uint256 public immutable chunkSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
-
-    IStorageManager public immutable storageManager;
 
     struct PhyAddr {
         /* Internal address seeking */
@@ -32,14 +31,12 @@ contract DecentralizedKV {
     mapping(uint256 => bytes32) internal idxMap;
 
     constructor(
-        IStorageManager _storageManager,
         uint256 _maxKvSize,
         uint256 _chunkSize,
         uint256 _startTime,
         uint256 _storageCost,
         uint256 _dcfFactor
     ) payable {
-        storageManager = _storageManager;
         startTime = _startTime;
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
@@ -106,17 +103,7 @@ contract DecentralizedKV {
         paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
-        putRawByDKV(paddr.kvIdx, data);
-    }
-
-    function putRawByDKV(uint256 kvIdx, bytes memory data) public virtual {
-        // Weird that cannot call precompiled contract like this (solidity issue?)
-        // storageManager.putRaw(paddr.kvIdx, data);
-        // Use call directly instead.
-        (bool success, ) = address(storageManager).delegatecall(
-            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx, data)
-        );
-        require(success, "failed to putRaw");
+        systemPutRaw(paddr.kvIdx,paddr.hash, data);
     }
 
     // Return the size of the keyed value
@@ -151,14 +138,7 @@ contract DecentralizedKV {
             len = paddr.kvSize - off;
         }
 
-        // Weird that we cannot call a precompile contract like this (solidity issue?).
-        // return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
-        // Use staticcall directly instead.
-        (bool success, bytes memory data) = address(storageManager).staticcall(
-            abi.encodeWithSelector(IStorageManager.getRaw.selector, paddr.hash, paddr.kvIdx, off, len)
-        );
-        require(success, "failed to getRaw");
-        return abi.decode(data, (bytes));
+        return systemGetRaw(paddr.hash, paddr.kvIdx, off, len);
     }
 
     // Remove an existing KV pair to a recipient.  Refund the cost accordingly.
@@ -181,7 +161,7 @@ contract DecentralizedKV {
         idxMap[lastKvIdx - 1] = 0x0;
         lastKvIdx = lastKvIdx - 1;
 
-        storageManager.removeRaw(lastKvIdx, kvIdx);
+        systemRemoveRaw(lastKvIdx, kvIdx);
 
         payable(to).transfer(upfrontPayment());
     }
