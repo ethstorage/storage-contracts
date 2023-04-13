@@ -40,7 +40,6 @@ contract DecentralizedKVMinable is DecentralizedKV {
     )
         payable
         DecentralizedKV(
-            _config.systemContract,
             1 << _config.maxKvSizeBits,
             1 << _config.chunkSizeBits,
             _startTime,
