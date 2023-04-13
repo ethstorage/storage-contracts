@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
-import "./IStorageManager.sol";
 
-contract PrecompileManager is ISystemContractDaggerHashimoto {
+
+contract PrecompileManager  {
     address public constant sstoragePisaPutRaw = 0x0000000000000000000000000000000000033302;
     address public constant sstoragePisaGetRaw = 0x0000000000000000000000000000000000033303;
     address public constant sstoragePisaUnmaskDaggerData = 0x0000000000000000000000000000000000033304;
@@ -12,32 +12,34 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
     uint64 public constant ENCODE_ETHHASH = 2;
 
     // Get a raw data from underlying storage.
-    function getRaw(
-        bytes32 hash,
+    function systemGetRaw(
+        bytes24 hash,
         uint256 kvIdx,
         uint256 off,
         uint256 len
     ) public view virtual returns (bytes memory) {
+        uint256 lowKvHash = uint256(uint192(hash));
         (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(
-            abi.encode(msg.sender, hash, kvIdx, off, len)
+            abi.encode(msg.sender, lowKvHash, kvIdx, off, len)
         );
         require(success, "failed to getRaw");
-        return data;
+        return abi.decode(data, (bytes));
     }
 
     // Set a raw data to underlying storage.
-    function putRaw(uint256 kvIdx, bytes memory data) public virtual {
-        (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(kvIdx, data));
+    function systemPutRaw(uint256 kvIdx, bytes24 kvHash , bytes memory data) public virtual {
+        uint256 lowKvHash = uint256(uint192(kvHash));
+        (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(kvIdx, lowKvHash, data));
         require(success, "failed to putRaw");
     }
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
-    function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual {
+    function systemRemoveRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual {
         (bool success, ) = address(sstoragePisaRemoveRaw).call(abi.encode(fromKvIdx, toKvIdx));
         require(success, "failed to removeRaw");
     }
 
-    function unmaskChunkWithEthash(
+    function systemUnmaskChunkWithEthash(
         uint64 chunkIdx,
         bytes24 kvHash,
         address miner,
@@ -51,5 +53,5 @@ contract PrecompileManager is ISystemContractDaggerHashimoto {
         return unmaskedChunk;
     }
 
-    function unmaskWithEthash(uint256 kvIdx, bytes memory maskedData) external view returns (bytes memory) {}
+    function systemUnmaskWithEthash(uint256 kvIdx, bytes memory maskedData) public view virtual returns (bytes memory) {}
 }
