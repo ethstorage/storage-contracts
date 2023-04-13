@@ -3,8 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 
-
-contract PrecompileManager  {
+contract PrecompileManager {
     address public constant sstoragePisaPutRaw = 0x0000000000000000000000000000000000033302;
     address public constant sstoragePisaGetRaw = 0x0000000000000000000000000000000000033303;
     address public constant sstoragePisaUnmaskDaggerData = 0x0000000000000000000000000000000000033304;
@@ -22,12 +21,12 @@ contract PrecompileManager  {
         (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(
             abi.encode(msg.sender, lowKvHash, kvIdx, off, len)
         );
-        require(success, "failed to getRaw");
+        require(success, "failed to systemGetRaw");
         return abi.decode(data, (bytes));
     }
 
     // Set a raw data to underlying storage.
-    function systemPutRaw(uint256 kvIdx, bytes24 kvHash , bytes memory data) public virtual {
+    function systemPutRaw(uint256 kvIdx, bytes24 kvHash, bytes memory data) public virtual {
         uint256 lowKvHash = uint256(uint192(kvHash));
         (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(kvIdx, lowKvHash, data));
         require(success, "failed to putRaw");
@@ -36,7 +35,7 @@ contract PrecompileManager  {
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function systemRemoveRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual {
         (bool success, ) = address(sstoragePisaRemoveRaw).call(abi.encode(fromKvIdx, toKvIdx));
-        require(success, "failed to removeRaw");
+        require(success, "failed to systemPutRaw");
     }
 
     function systemUnmaskChunkWithEthash(
@@ -49,9 +48,12 @@ contract PrecompileManager  {
         (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
             abi.encode(ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
-        require(success, "failed to unmaskChunkWithEthash");
+        require(success, "failed to systemUnmaskChunkWithEthash");
         return unmaskedChunk;
     }
 
-    function systemUnmaskWithEthash(uint256 kvIdx, bytes memory maskedData) public view virtual returns (bytes memory) {}
+    function systemUnmaskWithEthash(
+        uint256 kvIdx,
+        bytes memory maskedData
+    ) public view virtual returns (bytes memory) {}
 }

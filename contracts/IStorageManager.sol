@@ -3,15 +3,10 @@ pragma solidity ^0.8.0;
 
 interface IStorageManager {
     // Get a raw data from underlying storage.
-    function getRaw(
-        bytes24 hash,
-        uint256 kvIdx,
-        uint256 off,
-        uint256 len
-    ) external view returns (bytes memory);
+    function getRaw(bytes24 hash, uint256 kvIdx, uint256 off, uint256 len) external view returns (bytes memory);
 
     // Set a raw data to underlying storage.
-    function putRaw(uint256 kvIdx, bytes24 hash,bytes memory data) external;
+    function putRaw(uint256 kvIdx, bytes24 hash, bytes memory data) external;
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) external;

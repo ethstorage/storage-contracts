@@ -44,13 +44,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(
-            1 << _config.maxKvSizeBits,
-            1 << _config.chunkSizeBits,
-            _startTime,
-            _storageCost,
-            _dcfFactor
-        )
+        DecentralizedKV(1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits, _startTime, _storageCost, _dcfFactor)
     {
         /* Assumptions */
         require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
@@ -170,13 +164,13 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
                 dataHash := keccak256(add(unmaskedChunkData, 0x20), validUnmaskedDataLen)
             }
             uint256 restDataSize = chunkSize - validUnmaskedDataLen;
-            if (restDataSize>0){
+            if (restDataSize > 0) {
                 bytes memory emptyData = new bytes(restDataSize);
                 bytes32 emptyDataHash;
                 bytes32 restDataHash;
                 assembly {
-                    emptyDataHash := keccak256(add(emptyData,0x20),restDataSize)
-                    restDataHash := keccak256(add(add(unmaskedChunkData, 0x20),validUnmaskedDataLen),restDataSize)
+                    emptyDataHash := keccak256(add(emptyData, 0x20), restDataSize)
+                    restDataHash := keccak256(add(add(unmaskedChunkData, 0x20), validUnmaskedDataLen), restDataSize)
                 }
                 if (emptyDataHash != restDataHash) {
                     return false;
@@ -285,15 +279,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLen,
         uint256 minedTs
-    )
-        internal
-        view
-        returns (
-            uint256 diff,
-            uint256[] memory diffs,
-            bytes32 hash0
-        )
-    {
+    ) internal view returns (uint256 diff, uint256[] memory diffs, bytes32 hash0) {
         diffs = new uint256[](shardLen);
         diff = 0;
         hash0 = bytes32(0);
@@ -372,7 +358,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
 
         // Check if the data matches the hash in metadata.
         {
-            uint256 required = uint256(2**256 - 1) / diff;
+            uint256 required = uint256(2 ** 256 - 1) / diff;
             require(uint256(hash0) <= required, "diff not match");
         }
 

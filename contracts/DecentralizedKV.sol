@@ -6,7 +6,7 @@ import "./MerkleLib.sol";
 import "./BinaryRelated.sol";
 import "./PrecompileManager.sol";
 
-contract DecentralizedKV is PrecompileManager{
+contract DecentralizedKV is PrecompileManager {
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
     // Discounted cash flow factor in seconds
     // E.g., 0.85 yearly discount in second = 0.9999999948465585 = 340282365167313208607671216367074279424 in Q128.128
@@ -51,11 +51,7 @@ contract DecentralizedKV is PrecompileManager{
     }
 
     // Evaluate payment from [t0, t1) seconds
-    function _paymentInInterval(
-        uint256 x,
-        uint256 t0,
-        uint256 t1
-    ) internal view returns (uint256) {
+    function _paymentInInterval(uint256 x, uint256 t0, uint256 t1) internal view returns (uint256) {
         return (x * (pow(dcfFactor, t0) - pow(dcfFactor, t1))) >> 128;
     }
 
@@ -65,11 +61,7 @@ contract DecentralizedKV is PrecompileManager{
     }
 
     // Evaluate payment from timestamp [fromTs, toTs)
-    function _paymentIn(
-        uint256 x,
-        uint256 fromTs,
-        uint256 toTs
-    ) internal view returns (uint256) {
+    function _paymentIn(uint256 x, uint256 fromTs, uint256 toTs) internal view returns (uint256) {
         return _paymentInInterval(x, fromTs - startTime, toTs - startTime);
     }
 
@@ -103,7 +95,7 @@ contract DecentralizedKV is PrecompileManager{
         paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
-        systemPutRaw(paddr.kvIdx,paddr.hash, data);
+        systemPutRaw(paddr.kvIdx, paddr.hash, data);
     }
 
     // Return the size of the keyed value
@@ -119,11 +111,7 @@ contract DecentralizedKV is PrecompileManager{
     }
 
     // Return the keyed data given off and len.  This function can be only called in JSON-RPC context.
-    function get(
-        bytes32 key,
-        uint256 off,
-        uint256 len
-    ) public view returns (bytes memory) {
+    function get(bytes32 key, uint256 off, uint256 len) public view returns (bytes memory) {
         if (len == 0) {
             return new bytes(0);
         }

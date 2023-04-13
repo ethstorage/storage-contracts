@@ -37,12 +37,7 @@ library MiningLib {
         return diff;
     }
 
-    function update(
-        MiningInfo storage info,
-        uint256 mineTime,
-        uint256 diff,
-        bytes32 miningHash
-    ) internal {
+    function update(MiningInfo storage info, uint256 mineTime, uint256 diff, bytes32 miningHash) internal {
         // A block is mined!
         info.blockMined = info.blockMined + 1;
         info.miningHash = miningHash;

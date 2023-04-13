@@ -4,19 +4,11 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 
 contract TestMerkleLib {
-    function merkleRoot(
-        bytes memory data,
-        uint256 chunkSize,
-        uint256 nChunkBits
-    ) public pure returns (bytes32) {
+    function merkleRoot(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public pure returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
-    function merkleRootNoView(
-        bytes memory data,
-        uint256 chunkSize,
-        uint256 nChunkBits
-    ) public returns (bytes32) {
+    function merkleRootNoView(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
