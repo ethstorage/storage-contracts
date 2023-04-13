@@ -2,10 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./DecentralizedKVMinable.sol";
+import "./TestDecentralizedKV.sol";
 import "./MiningLib.sol";
 
 contract TestDecentralizedKVMinable is DecentralizedKVMinable {
     uint256 public currentTimestamp;
+    ISystemContract public immutable systemContractTest;
 
     constructor(
         Config memory _config,
@@ -13,7 +15,9 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
         uint256 _storageCost,
         uint256 _dcfFactor,
         bytes32 _genesisHash
-    ) DecentralizedKVMinable(_config, _startTime, _storageCost, _dcfFactor, _genesisHash) {}
+    ) DecentralizedKVMinable(_config, _startTime, _storageCost, _dcfFactor, _genesisHash) {
+        systemContractTest = _config.systemContract;
+    }
 
     function setTimestamp(uint256 ts) public {
         require(ts > currentTimestamp, "ts");
@@ -80,13 +84,34 @@ contract TestDecentralizedKVMinable is DecentralizedKVMinable {
         _rewardMiner(startShardId, shardLen, miner, minedTs, diffs, hash0);
     }
 
-     function putRawByDKV(uint256 kvIdx, bytes memory data) public virtual override{
+    ///////////////////////////override the precompileManager functions/////////////////////
+
+    function systemPutRaw(uint256 kvIdx, bytes24 kvHash, bytes memory data) public virtual override{
         // Weird that cannot call precompiled contract like this (solidity issue?)
         // storageManager.putRaw(paddr.kvIdx, data);
         // Use call directly instead.
-        (bool success, ) = address(storageManager).call(
-            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx, data)
+        (bool success, ) = address(systemContractTest).call(
+            abi.encodeWithSelector(IStorageManager.putRaw.selector, kvIdx,kvHash, data)
         );
         require(success, "failed to putRaw");
     }
+
+    function systemGetRaw(
+        bytes24 hash,
+        uint256 kvIdx,
+        uint256 off,
+        uint256 len
+    ) public view virtual override returns (bytes memory) {
+        (bool success, bytes memory data) = address(systemContractTest).staticcall(
+            abi.encodeWithSelector(IStorageManager.getRaw.selector, hash,kvIdx,off,len)
+        );
+        require(success, "failed to systemGetRaw");
+        return abi.decode(data,(bytes));
+    }
+
+    // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
+    function systemRemoveRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual override{
+        systemContractTest.removeRaw(fromKvIdx, toKvIdx);
+    }
+
 }

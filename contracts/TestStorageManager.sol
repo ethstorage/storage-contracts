@@ -14,7 +14,7 @@ contract TestStorageManager is IStorageManager {
 
     // Get a raw data from underlying storage.
     function getRaw(
-        bytes32 hash,
+        bytes24 hash,
         uint256 kvIdx,
         uint256 off,
         uint256 len
@@ -38,7 +38,7 @@ contract TestStorageManager is IStorageManager {
     }
 
     // Set a raw data to underlying storage.
-    function putRaw(uint256 kvIdx, bytes memory data) external override {
+    function putRaw(uint256 kvIdx, bytes24 kvHash, bytes memory data) external override {
         dataMap[kvIdx] = data;
     }
 
