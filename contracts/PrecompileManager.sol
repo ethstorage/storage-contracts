@@ -18,8 +18,8 @@ contract PrecompileManager {
         uint256 len
     ) public view virtual returns (bytes memory) {
         uint256 lowKvHash = uint256(uint192(hash));
-        (bool success, bytes memory data) = address(sstoragePisaGetRaw).staticcall(
-            abi.encode(msg.sender, lowKvHash, kvIdx, off, len)
+        (bool success, bytes memory data) = address(0x0000000000000000000000000000000000033303).staticcall(
+            abi.encode(lowKvHash, kvIdx, off, len)
         );
         require(success, "failed to systemGetRaw");
         return abi.decode(data, (bytes));
@@ -28,13 +28,13 @@ contract PrecompileManager {
     // Set a raw data to underlying storage.
     function systemPutRaw(uint256 kvIdx, bytes24 kvHash, bytes memory data) public virtual {
         uint256 lowKvHash = uint256(uint192(kvHash));
-        (bool success, ) = address(sstoragePisaPutRaw).call(abi.encode(kvIdx, lowKvHash, data));
+        (bool success, ) = address(0x0000000000000000000000000000000000033302).call(abi.encode(kvIdx, lowKvHash, data));
         require(success, "failed to putRaw");
     }
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function systemRemoveRaw(uint256 fromKvIdx, uint256 toKvIdx) public virtual {
-        (bool success, ) = address(sstoragePisaRemoveRaw).call(abi.encode(fromKvIdx, toKvIdx));
+        (bool success, ) = address(0x0000000000000000000000000000000000033305).call(abi.encode(fromKvIdx, toKvIdx));
         require(success, "failed to systemPutRaw");
     }
 
@@ -45,7 +45,7 @@ contract PrecompileManager {
         bytes memory maskedChunk
     ) public view virtual returns (bytes memory) {
         uint256 lowKvHash = uint256(uint192(kvHash)); // make sure we will get the low 24byte kvHash
-        (bool success, bytes memory unmaskedChunk) = address(sstoragePisaUnmaskDaggerData).staticcall(
+        (bool success, bytes memory unmaskedChunk) = address(0x0000000000000000000000000000000000033304).staticcall(
             abi.encode(ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
         require(success, "failed to systemUnmaskChunkWithEthash");

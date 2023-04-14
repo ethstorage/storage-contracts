@@ -35,6 +35,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     bytes32 public immutable emptyChunkHash;
 
     mapping(uint256 => MiningLib.MiningInfo) public infos;
+    bool public initedShard;
 
     constructor(
         Config memory _config,
@@ -63,6 +64,16 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         coinbaseShare = _config.coinbaseShare;
         emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
         emptyChunkHash = keccak256(new bytes(1 << _config.chunkSizeBits));
+        infos[0].lastMineTime = _startTime;
+        infos[0].miningHash = _genesisHash;
+        infos[1].lastMineTime = _startTime;
+        infos[1].miningHash = _genesisHash;
+    }
+
+    // we need this function because we are not able to init storage variable at constructor() on sidechain.
+    function initShard(uint256 _startTime,bytes32 _genesisHash) public {
+        require(!initedShard,"already init shard");
+        initedShard = true;
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
         infos[0].miningHash = _genesisHash;
