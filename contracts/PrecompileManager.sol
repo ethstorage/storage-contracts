@@ -49,7 +49,7 @@ contract PrecompileManager {
             abi.encode(ENCODE_ETHHASH, chunkIdx, lowKvHash, miner, maskedChunk)
         );
         require(success, "failed to systemUnmaskChunkWithEthash");
-        return unmaskedChunk;
+        return abi.decode(unmaskedChunk, (bytes));
     }
 
     function systemUnmaskWithEthash(
