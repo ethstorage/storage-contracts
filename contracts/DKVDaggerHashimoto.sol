@@ -35,7 +35,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     bytes32 public immutable emptyChunkHash;
 
     mapping(uint256 => MiningLib.MiningInfo) public infos;
-
+    bool public initializedShard;
     constructor(
         Config memory _config,
         uint256 _startTime,
@@ -69,6 +69,18 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         infos[1].lastMineTime = _startTime;
         infos[1].miningHash = _genesisHash;
     }
+
+     // we need this function because we are not able to init storage variables at constructor() on sidechain.
+    function initShard(uint256 _startTime,bytes32 _genesisHash) public {
+        require(!initializedShard,"already initialized shard");
+        initializedShard = true;
+        // Shard 0 and 1 is ready to mine.
+        infos[0].lastMineTime = _startTime;
+        infos[0].miningHash = _genesisHash;
+        infos[1].lastMineTime = _startTime;
+        infos[1].miningHash = _genesisHash;
+    }
+
 
     function sendValue() public payable {}
 
