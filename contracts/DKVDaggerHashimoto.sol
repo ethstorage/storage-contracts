@@ -70,7 +70,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         infos[1].miningHash = _genesisHash;
     }
 
-     // we need this function because we are not able to init storage variables at constructor() on sidechain.
+    // we need this function because we are not able to init storage variables at constructor() on sidechain.
     function initShard(uint256 _startTime,bytes32 _genesisHash) public {
         require(!initializedShard,"already initialized shard");
         initializedShard = true;
