@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./DKVDaggerHashimoto.sol";
+import "./DecentralizedKVDaggerHashimoto.sol";
 import "./MiningLib.sol";
 
 contract TestDecentralizedKVDaggerHashimoto is DecentralizedKVDaggerHashimoto {
