@@ -4,19 +4,11 @@ pragma solidity ^0.8.0;
 import "./MerkleLib.sol";
 
 contract TestMerkleLib {
-    function merkleRoot(
-        bytes memory data,
-        uint256 chunkSize,
-        uint256 nChunkBits
-    ) public pure returns (bytes32) {
+    function merkleRoot(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public pure returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
-    function merkleRootNoView(
-        bytes memory data,
-        uint256 chunkSize,
-        uint256 nChunkBits
-    ) public returns (bytes32) {
+    function merkleRootNoView(bytes memory data, uint256 chunkSize, uint256 nChunkBits) public returns (bytes32) {
         return MerkleLib.merkleRoot(data, chunkSize, nChunkBits);
     }
 
@@ -40,5 +32,9 @@ contract TestMerkleLib {
         uint256 chunkIdx
     ) public pure returns (bytes32[] memory) {
         return MerkleLib.getProof(data, chunkSize, nChunkBits, chunkIdx);
+    }
+
+    function getMaxLeafsNum(uint256 kvSize, uint256 chunkSize) public pure returns (uint256) {
+        return MerkleLib.getMaxLeafsNum(kvSize, chunkSize);
     }
 }

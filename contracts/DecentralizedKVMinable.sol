@@ -39,8 +39,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
-                         _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits, _startTime, _storageCost, _dcfFactor)
     {
         require(_config.shardSizeBits >= _config.maxKvSizeBits, "config size mismatch");
         require(_config.randomChecks > 0, "randomChecks must be nonzero");
@@ -190,15 +189,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLen,
         uint256 minedTs
-    )
-        internal
-        view
-        returns (
-            uint256 diff,
-            uint256[] memory diffs,
-            bytes32 hash0
-        )
-    {
+    ) internal view returns (uint256 diff, uint256[] memory diffs, bytes32 hash0) {
         diffs = new uint256[](shardLen);
         diff = 0;
         hash0 = bytes32(0);
@@ -269,7 +260,7 @@ contract DecentralizedKVMinable is DecentralizedKV {
 
         // Check if the data matches the hash in metadata.
         {
-            uint256 required = uint256(2**256 - 1) / diff;
+            uint256 required = uint256(2 ** 256 - 1) / diff;
             require(uint256(hash0) <= required, "diff not match");
         }
 

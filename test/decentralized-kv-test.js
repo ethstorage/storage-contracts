@@ -3,23 +3,21 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /* declare const key */
-const key1 = "0x0000000000000000000000000000000000000000000000000000000000000001"
-const key2 = "0x0000000000000000000000000000000000000000000000000000000000000002"
-const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003"
+const key1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
+const key2 = "0x0000000000000000000000000000000000000000000000000000000000000002";
+const key3 = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
 describe("DecentralizedKV Test", function () {
   it("put/get/remove", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x11223344"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x11223344");
     expect(await kv.get(key1, 1, 2)).to.equal("0x2233");
     expect(await kv.get(key1, 2, 3)).to.equal("0x3344");
 
@@ -30,24 +28,18 @@ describe("DecentralizedKV Test", function () {
 
   it("put/get with replacement", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     const kv = await DecentralizedKV.deploy(sm.address, 1024, 1024, 0, 0, 0);
     await kv.deployed();
 
     await kv.put(key1, "0x11223344");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x11223344"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x11223344");
 
     await kv.put(key1, "0x772233445566");
-    expect(await kv.get(key1, 0, 4)).to.equal(
-      "0x77223344"
-    );
-    expect(await kv.get(key1, 0, 6)).to.equal(
-      "0x772233445566"
-    );
+    expect(await kv.get(key1, 0, 4)).to.equal("0x77223344");
+    expect(await kv.get(key1, 0, 6)).to.equal("0x772233445566");
 
     await kv.put(key1, "0x8899");
     expect(await kv.get(key1, 0, 4)).to.equal("0x8899");
@@ -61,7 +53,7 @@ describe("DecentralizedKV Test", function () {
     let wallet = ethers.Wallet.createRandom().connect(addr0.provider);
 
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.5 discount rate per second
@@ -76,9 +68,7 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
-    await expect(
-      kv.put(key1, "0x11223344")
-    ).to.be.revertedWith("not enough payment");
+    await expect(kv.put(key1, "0x11223344")).to.be.revertedWith("not enough payment");
     await expect(
       kv.put(key1, "0x11223344", {
         value: "900000000000000000",
@@ -108,7 +98,7 @@ describe("DecentralizedKV Test", function () {
 
   it("put with payment and yearly 0.9 dcf", async function () {
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.90 discount rate per year
@@ -123,9 +113,7 @@ describe("DecentralizedKV Test", function () {
     await kv.deployed();
 
     expect(await kv.upfrontPayment()).to.equal("1000000000000000000");
-    await expect(
-      kv.put(key1, "0x11223344")
-    ).to.be.revertedWith("not enough payment");
+    await expect(kv.put(key1, "0x11223344")).to.be.revertedWith("not enough payment");
     await expect(
       kv.put(key1, "0x11223344", {
         value: "900000000000000000",
@@ -145,7 +133,7 @@ describe("DecentralizedKV Test", function () {
     const [addr0, addr1] = await ethers.getSigners();
 
     const StorageManager = await ethers.getContractFactory("TestStorageManager");
-    const sm = await StorageManager.deploy();
+    const sm = await StorageManager.deploy(4096);
     await sm.deployed();
     const DecentralizedKV = await ethers.getContractFactory("TestDecentralizedKV");
     // 1e18 cost with 0.5 discount rate per second

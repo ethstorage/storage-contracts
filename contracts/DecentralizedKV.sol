@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "./IStorageManager.sol";
 import "./MerkleLib.sol";
 import "./BinaryRelated.sol";
+import "./PrecompileManager.sol";
 
-contract DecentralizedKV {
+contract DecentralizedKV is PrecompileManager {
     uint256 public immutable storageCost; // Upfront storage cost (pre-dcf)
     // Discounted cash flow factor in seconds
     // E.g., 0.85 yearly discount in second = 0.9999999948465585 = 340282365167313208607671216367074279424 in Q128.128
@@ -14,8 +15,6 @@ contract DecentralizedKV {
     uint256 public immutable maxKvSize;
     uint256 public immutable chunkSize;
     uint40 public lastKvIdx = 0; // number of entries in the store
-
-    IStorageManager public immutable storageManager;
 
     struct PhyAddr {
         /* Internal address seeking */
@@ -32,14 +31,12 @@ contract DecentralizedKV {
     mapping(uint256 => bytes32) internal idxMap;
 
     constructor(
-        IStorageManager _storageManager,
         uint256 _maxKvSize,
         uint256 _chunkSize,
         uint256 _startTime,
         uint256 _storageCost,
         uint256 _dcfFactor
     ) payable {
-        storageManager = _storageManager;
         startTime = _startTime;
         maxKvSize = _maxKvSize;
         storageCost = _storageCost;
@@ -54,11 +51,7 @@ contract DecentralizedKV {
     }
 
     // Evaluate payment from [t0, t1) seconds
-    function _paymentInInterval(
-        uint256 x,
-        uint256 t0,
-        uint256 t1
-    ) internal view returns (uint256) {
+    function _paymentInInterval(uint256 x, uint256 t0, uint256 t1) internal view returns (uint256) {
         return (x * (pow(dcfFactor, t0) - pow(dcfFactor, t1))) >> 128;
     }
 
@@ -68,11 +61,7 @@ contract DecentralizedKV {
     }
 
     // Evaluate payment from timestamp [fromTs, toTs)
-    function _paymentIn(
-        uint256 x,
-        uint256 fromTs,
-        uint256 toTs
-    ) internal view returns (uint256) {
+    function _paymentIn(uint256 x, uint256 fromTs, uint256 toTs) internal view returns (uint256) {
         return _paymentInInterval(x, fromTs - startTime, toTs - startTime);
     }
 
@@ -106,13 +95,7 @@ contract DecentralizedKV {
         paddr.hash = bytes24(MerkleLib.merkleRootWithMinTree(data, chunkSize));
         kvMap[skey] = paddr;
 
-        // Weird that cannot call precompiled contract like this (solidity issue?)
-        // storageManager.putRaw(paddr.kvIdx, data);
-        // Use call directly instead.
-        (bool success, ) = address(storageManager).call(
-            abi.encodeWithSelector(IStorageManager.putRaw.selector, paddr.kvIdx, data)
-        );
-        require(success, "failed to putRaw");
+        systemPutRaw(paddr.kvIdx, paddr.hash, data);
     }
 
     // Return the size of the keyed value
@@ -128,11 +111,7 @@ contract DecentralizedKV {
     }
 
     // Return the keyed data given off and len.  This function can be only called in JSON-RPC context.
-    function get(
-        bytes32 key,
-        uint256 off,
-        uint256 len
-    ) public view returns (bytes memory) {
+    function get(bytes32 key, uint256 off, uint256 len) public view returns (bytes memory) {
         if (len == 0) {
             return new bytes(0);
         }
@@ -147,14 +126,7 @@ contract DecentralizedKV {
             len = paddr.kvSize - off;
         }
 
-        // Weird that we cannot call a precompile contract like this (solidity issue?).
-        // return storageManager.getRaw(paddr.hash, paddr.kvIdx, off, len);
-        // Use staticcall directly instead.
-        (bool success, bytes memory data) = address(storageManager).staticcall(
-            abi.encodeWithSelector(IStorageManager.getRaw.selector, paddr.hash, paddr.kvIdx, off, len)
-        );
-        require(success, "failed to getRaw");
-        return abi.decode(data, (bytes));
+        return systemGetRaw(paddr.hash, paddr.kvIdx, off, len);
     }
 
     // Remove an existing KV pair to a recipient.  Refund the cost accordingly.
@@ -177,7 +149,7 @@ contract DecentralizedKV {
         idxMap[lastKvIdx - 1] = 0x0;
         lastKvIdx = lastKvIdx - 1;
 
-        storageManager.removeRaw(lastKvIdx, kvIdx);
+        systemRemoveRaw(lastKvIdx, kvIdx);
 
         payable(to).transfer(upfrontPayment());
     }

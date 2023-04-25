@@ -20,6 +20,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 coinbaseShare; // 10000 = 1.0
         ISystemContractDaggerHashimoto systemContract;
     }
+
     uint256 public immutable maxKvSizeBits;
     uint256 public immutable shardSizeBits;
     uint256 public immutable shardEntryBits;
@@ -31,10 +32,10 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     uint256 public immutable diffAdjDivisor;
     uint256 public immutable coinbaseShare; // 10000 = 1.0
     bytes32 public immutable emptyValueHash;
-    ISystemContractDaggerHashimoto public immutable systemContract;
+    bytes32 public immutable emptyChunkHash;
 
     mapping(uint256 => MiningLib.MiningInfo) public infos;
-
+    bool public initializedShard;
     constructor(
         Config memory _config,
         uint256 _startTime,
@@ -43,15 +44,13 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         bytes32 _genesisHash
     )
         payable
-        DecentralizedKV(_config.systemContract, 1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits,
-                        _startTime, _storageCost, _dcfFactor)
+        DecentralizedKV(1 << _config.maxKvSizeBits, 1 << _config.chunkSizeBits, _startTime, _storageCost, _dcfFactor)
     {
         /* Assumptions */
         require(_config.shardSizeBits >= _config.maxKvSizeBits, "shardSize too small");
         require(_config.maxKvSizeBits >= _config.chunkSizeBits, "maxKvSize too small");
         require(_config.randomChecks > 0, "At least one checkpoint needed");
 
-        systemContract = _config.systemContract;
         shardSizeBits = _config.shardSizeBits;
         maxKvSizeBits = _config.maxKvSizeBits;
         shardEntryBits = _config.shardSizeBits - _config.maxKvSizeBits;
@@ -63,13 +62,25 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         diffAdjDivisor = _config.diffAdjDivisor;
         coinbaseShare = _config.coinbaseShare;
         emptyValueHash = keccak256(new bytes(1 << _config.maxKvSizeBits));
-
+        emptyChunkHash = keccak256(new bytes(1 << _config.chunkSizeBits));
         // Shard 0 and 1 is ready to mine.
         infos[0].lastMineTime = _startTime;
         infos[0].miningHash = _genesisHash;
         infos[1].lastMineTime = _startTime;
         infos[1].miningHash = _genesisHash;
     }
+
+    // we need this function because we are not able to init storage variables at constructor() on sidechain.
+    function initShard(uint256 _startTime,bytes32 _genesisHash) public {
+        require(!initializedShard,"already initialized shard");
+        initializedShard = true;
+        // Shard 0 and 1 is ready to mine.
+        infos[0].lastMineTime = _startTime;
+        infos[0].miningHash = _genesisHash;
+        infos[1].lastMineTime = _startTime;
+        infos[1].miningHash = _genesisHash;
+    }
+
 
     function sendValue() public payable {}
 
@@ -143,98 +154,55 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
     }
 
     /* ON CHAIN VERFICATION */
-    function checkDaggerDataWithProof(
-        uint256 idx,
-        bytes32 kvHash,
+    function openInMerkleTreeWithProof(
+        uint256 chunkIdx,
+        PhyAddr memory kvInfo,
         bytes32[] memory proofs,
-        bytes memory maskedData
-    ) public pure returns (bool) {
-        bytes32 dataHash = keccak256(maskedData);
-        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, idx, proofs);
+        bytes memory unmaskedChunkData
+    ) public view returns (bool) {
+        uint256 chunksNumPerKV = 1 << chunkLenBits;
+        uint256 chunkLeafIdx = chunkIdx % chunksNumPerKV;
+
+        // we should consider three cases:
+        // 1. the chunk-leaf is included in the minTree with empty being full with zero
+        // 2. the chunk-leaf is included in the minTree with the chunk not full of data
+        // 3. the chunk-leaf is included in the minTree with the chunk full of data
+        bytes32 dataHash;
+        if (chunkLeafIdx * chunkSize >= kvInfo.kvSize) {
+            return keccak256(unmaskedChunkData) == emptyChunkHash;
+        } else if ((kvInfo.kvSize - 1) / chunkSize == chunkLeafIdx) {
+            uint256 validUnmaskedDataLen = kvInfo.kvSize - chunkLeafIdx * chunkSize;
+            assembly {
+                dataHash := keccak256(add(unmaskedChunkData, 0x20), validUnmaskedDataLen)
+            }
+            uint256 restDataSize = chunkSize - validUnmaskedDataLen;
+            if (restDataSize > 0) {
+                bytes memory emptyData = new bytes(restDataSize);
+                bytes32 emptyDataHash;
+                bytes32 restDataHash;
+                assembly {
+                    emptyDataHash := keccak256(add(emptyData, 0x20), restDataSize)
+                    restDataHash := keccak256(add(add(unmaskedChunkData, 0x20), validUnmaskedDataLen), restDataSize)
+                }
+                if (emptyDataHash != restDataHash) {
+                    return false;
+                }
+            }
+        } else {
+            dataHash = keccak256(unmaskedChunkData);
+        }
+
+        bytes32 rootFromProofs = MerkleLib.calculateRootWithProof(dataHash, chunkLeafIdx, proofs);
         /* NOTICE: Due to our design of PhyAddr, only front 24 bytes
          *         are valid. We only validate that part.
-         * With no doubt, it introduces some vulnerability compared 
+         * With no doubt, it introduces some vulnerability compared
          * with a standard Merkle validation. It is a trade-off,
          * if we want to put all meta data into a single bytes32(opcode length)
          */
-        return bytes24(rootFromProofs) == bytes24(kvHash);
-    }
-
-    /* NOTICE: 
-     *   This function assumes users clearly know their submitting data
-     *   is LESS OR EQUAL THAN SYSTEM_MINIMAL_BLOCK (which is 4K normally).
-     *   So basically this is a trival keccak256 comparison on a full bytes32
-     */
-    function checkDaggerData(
-        uint256,
-        bytes32 kvHash,
-        bytes memory maskedData
-    ) public pure returns (bool) {
-        bytes32[] memory proofs;
-        require(proofs.length == 0, "need an empty proofs");
-        return checkDaggerDataWithProof(0, kvHash, proofs, maskedData);
+        return bytes24(rootFromProofs) == bytes24(kvInfo.hash);
     }
 
     /* END OF ON CHAIN VERFICATION */
-
-    /*
-     * Run a modified hashimoto hash.
-     */
-    function _hashimoto(
-        uint256 startShardId,
-        uint256 shardLenBits,
-        bytes32 hash0,
-        bytes[] memory maskedData
-    ) internal view returns (bytes32) {
-        /*
-         * The parameters vs Ethash
-         * elementSize: 32 (bytes) vs 4 (bytes)
-         * mixSize: 4096 vs 128
-         * mixEntries: 4096/32= vs 32
-         * loopAccess: 16 vs 64
-         * lookupTableBytes: 4096 vs 64
-         * use XOR with random position of mix data intead of FNV with fixed mix positions for faster speed
-         */
-        require(maskedData.length == randomChecks, "data vs checks: length mismatch");
-        uint256 maxKvSize = 1 << maxKvSizeBits;
-        bytes memory mix = new bytes(maxKvSize);
-        for (uint256 j = 32; j <= maxKvSize; j += 32) {
-            assembly {
-                mstore(add(mix, j), hash0)
-            }
-        }
-
-        uint256 rows = 1 << (shardEntryBits + shardLenBits);
-
-        uint256 mixOff = 0;
-        for (uint256 i = 0; i < randomChecks; i++) {
-            require(maskedData[i].length == maxKvSize, "invalid proof size");
-            uint256 mixData;
-            {
-                uint256 off = mixOff + 32;
-                assembly {
-                    mixData := mload(add(mix, off))
-                }
-            }
-            // Check if the random accessed data is correct.
-            mixData = _fnv256(i ^ uint256(hash0), mixData);
-            uint256 parent = mixData % rows;
-            uint256 kvIdx = parent + (startShardId << shardEntryBits);
-            bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
-            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
-
-            // Next mixOff
-            mixOff = (mixData >> (shardEntryBits + shardLenBits)) % (maxKvSize - 32);
-
-            // Xor access data (instead of fnv for faster speed)
-            if ((maxKvSize % 128) == 0) {
-                _xorData4(mix, data);
-            } else {
-                _xorData(mix, data);
-            }
-        }
-        return keccak256(mix);
-    }
 
     /*
      * Run a modified hashimoto hash.
@@ -257,8 +225,8 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
             require(maskedData[i].length == maxKvSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 kvIdx = parent + (startShardId << shardEntryBits);
-            bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
-            require(checkDaggerData(kvIdx, kvMap[idxMap[kvIdx]].hash, data), "invalid access proof");
+            bytes memory data = systemUnmaskWithEthash(kvIdx, maskedData[i]);
+            require(bytes24(keccak256(data)) == kvMap[idxMap[kvIdx]].hash, "invalid access proof");
 
             assembly {
                 mstore(data, hash0)
@@ -277,32 +245,42 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLenBits,
         bytes32 hash0,
+        address miner,
         bytes32[][] memory proofsDim2,
         bytes[] memory maskedData
     ) internal view returns (bytes32) {
         require(maskedData.length == randomChecks, "data vs checks: length mismatch");
         require(proofsDim2.length == randomChecks, "proofs vs checks: length mismatch");
-        uint256 maxKvSize = 1 << maxKvSizeBits;
+        // calculate the number of chunks range of the sample check
         uint256 rows = 1 << (shardEntryBits + shardLenBits + chunkLenBits);
 
         for (uint256 i = 0; i < randomChecks; i++) {
-            require(maskedData[i].length == chunkSize, "invalid proof size");
+            uint256 mChunkSize = chunkSize;
+            require(maskedData[i].length == mChunkSize, "invalid proof size");
             uint256 parent = uint256(hash0) % rows;
             uint256 chunkIdx = parent + (startShardId << (shardEntryBits + chunkLenBits));
             uint256 kvIdx = chunkIdx >> chunkLenBits;
-            chunkIdx = chunkIdx % (1 << chunkLenBits);
-            bytes memory data = systemContract.unmaskWithEthash(kvIdx, maskedData[i]);
+            PhyAddr memory kvInfo = kvMap[idxMap[kvIdx]];
+
+            /* NOTICE: kvInfo.hash is the high-24-byte-hash , the value will convert to
+             *          low-24-byte-hash by the systemContract */
+            bytes memory unmaskedData = systemUnmaskChunkWithEthash(
+                uint64(chunkIdx),
+                kvInfo.hash,
+                miner,
+                maskedData[i]
+            );
             /* NOTICE: Now we have kvIdx and chunkIdx both generated from hash0
              *         The difficulty should increase intrinsically */
-            require(
-                checkDaggerDataWithProof(chunkIdx, kvMap[idxMap[kvIdx]].hash, proofsDim2[i], data),
-                "invalid access proof"
-            );
+            require(openInMerkleTreeWithProof(chunkIdx, kvInfo, proofsDim2[i], unmaskedData), "invalid access proof");
 
+            /* NOTICE: we should use the maskedChunkData merged with the `hash0` to calculate the new `hash0`
+             *          because the miner executes this `hash0` calculation off-chain in this way. */
+            bytes memory maskedChunkData = maskedData[i];
             assembly {
-                mstore(data, hash0)
-                hash0 := keccak256(data, add(maxKvSize, 0x20))
-                mstore(data, maxKvSize)
+                mstore(maskedChunkData, hash0)
+                hash0 := keccak256(maskedChunkData, add(mChunkSize, 0x20))
+                mstore(maskedChunkData, mChunkSize)
             }
         }
         return hash0;
@@ -313,15 +291,7 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         uint256 startShardId,
         uint256 shardLen,
         uint256 minedTs
-    )
-        internal
-        view
-        returns (
-            uint256 diff,
-            uint256[] memory diffs,
-            bytes32 hash0
-        )
-    {
+    ) internal view returns (uint256 diff, uint256[] memory diffs, bytes32 hash0) {
         diffs = new uint256[](shardLen);
         diff = 0;
         hash0 = bytes32(0);
@@ -396,11 +366,11 @@ contract DecentralizedKVDaggerHashimoto is DecentralizedKV {
         );
 
         hash0 = keccak256(abi.encode(hash0, miner, minedTs, nonce));
-        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, proofsDim2, maskedData);
+        hash0 = _hashimotoMerkleProof(startShardId, shardLenBits, hash0, miner, proofsDim2, maskedData);
 
         // Check if the data matches the hash in metadata.
         {
-            uint256 required = uint256(2**256 - 1) / diff;
+            uint256 required = uint256(2 ** 256 - 1) / diff;
             require(uint256(hash0) <= required, "diff not match");
         }
 

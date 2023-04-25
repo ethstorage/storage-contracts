@@ -3,15 +3,10 @@ pragma solidity ^0.8.0;
 
 interface IStorageManager {
     // Get a raw data from underlying storage.
-    function getRaw(
-        bytes32 hash,
-        uint256 kvIdx,
-        uint256 off,
-        uint256 len
-    ) external view returns (bytes memory);
+    function getRaw(bytes24 hash, uint256 kvIdx, uint256 off, uint256 len) external view returns (bytes memory);
 
     // Set a raw data to underlying storage.
-    function putRaw(uint256 kvIdx, bytes memory data) external;
+    function putRaw(uint256 kvIdx, bytes24 hash, bytes memory data) external;
 
     // Remove by moving data from fromKvIdx to toKvIdx and clear fromKvIdx
     function removeRaw(uint256 fromKvIdx, uint256 toKvIdx) external;
@@ -34,17 +29,18 @@ interface IMiningHash {
 
 interface IDaggerHash {
     // Decode the data and return raw data that verfier needs
-    function unmaskWithEthash(
-        uint256 kvIdx,
-        bytes memory maskedData
+    function unmaskChunkWithEthash(
+        uint64 chunkIdx,
+        bytes24 kvHash,
+        address miner,
+        bytes memory maskedChunk
     ) external view returns (bytes memory);
 
     // Another option is to use Verify Delay Function(VDF),
     // such as MiMC. For saving gas cost, those are not materialized for now
-
+    function unmaskWithEthash(uint256 kvIdx, bytes memory maskedData) external view returns (bytes memory);
 }
 
 interface ISystemContract is IStorageManager, IMiningHash {}
 
 interface ISystemContractDaggerHashimoto is IStorageManager, IDaggerHash {}
-
