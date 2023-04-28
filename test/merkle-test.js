@@ -129,3 +129,26 @@ describe("MerkleLib Test", function () {
     await expect(ml.verify(data.slice(0,64), 10, root, proof)).to.be.revertedWith("chunkId overflows");
   });
 });
+
+describe("Binary Lib Test", function () {
+  it("tests findNextPowerOf2", async function () {
+    const MerkleLib = await ethers.getContractFactory("TestMerkleLib");
+    const ml = await MerkleLib.deploy();
+    await ml.deployed();
+
+    const myFindNextPowerOf2 = n => {
+      n = n - 1;
+      while ((n & (n-1) != 0)) n = n & (n-1);
+      return n << 1;
+    };
+
+    const sizeList = [1, 32, 33, 256, 1024, 4096, 1024*1024, 1024*1024+1, 4557942];
+    sizeList.forEach(async x => {
+      const fromContract = await ml.findNextPowerOf2(x);
+      const local = myFindNextPowerOf2(x);
+      const isEqual = (fromContract == local);
+      if (!isEqual) console.log("number %d local method and contract method don't match.",x);
+      expect(isEqual).to.be.equal(true);
+    })
+  });
+});
